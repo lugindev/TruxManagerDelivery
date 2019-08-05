@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_run_jar" name="Create Runnable Jar for Project Trux-server">
+    <!--this file was created by Eclipse Runnable JAR Export Wizard-->
+    <!--ANT 1.7 is required                                        -->
+    <target name="create_run_jar">
+        <jar destfile="/home/toni/workspace-eclipse/TruxManagerWeightings.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Main-Class" value="ch.parolini.truxmanager.server.Application"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <fileset dir="/home/toni/workspace-eclipse/Trux-server/bin"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/boot/spring-boot-starter-web/1.1.3.RELEASE/spring-boot-starter-web-1.1.3.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-data-jpa/1.1.3.RELEASE/617540f031cd737546d97bdee6299d7cb15acbc8/spring-boot-starter-data-jpa-1.1.3.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-jdbc/1.1.3.RELEASE/d6ba3a919ed81841001c94a477b2b13c0d866f95/spring-boot-starter-jdbc-1.1.3.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-security/1.1.3.RELEASE/1c583f702bc0911543953614e0142bc866f7d4b7/spring-boot-starter-security-1.1.3.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.postgresql/postgresql/9.3-1102-jdbc41/e01373bd6ed64d1b3bf1476e5ed6a7652a5fbfcb/postgresql-9.3-1102-jdbc41.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-test/1.1.3.RELEASE/11961eb83bfa114677ad07f7cfd9346e6359e649/spring-boot-starter-test-1.1.3.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/junit/junit/4.11/junit-4.11.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/spring-core/4.0.5.RELEASE/spring-core-4.0.5.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/spring-beans/4.0.5.RELEASE/spring-beans-4.0.5.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/spring-expression/4.0.5.RELEASE/spring-expression-4.0.5.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/aopalliance/aopalliance/1.0/aopalliance-1.0.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/spring-aop/4.0.5.RELEASE/spring-aop-4.0.5.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/spring-context/4.0.5.RELEASE/spring-context-4.0.5.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/boot/spring-boot/1.1.3.RELEASE/spring-boot-1.1.3.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/boot/spring-boot-autoconfigure/1.1.3.RELEASE/spring-boot-autoconfigure-1.1.3.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/slf4j/slf4j-api/1.7.7/slf4j-api-1.7.7.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/slf4j/jcl-over-slf4j/1.7.7/jcl-over-slf4j-1.7.7.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/slf4j/jul-to-slf4j/1.7.7/jul-to-slf4j-1.7.7.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/slf4j/log4j-over-slf4j/1.7.7/log4j-over-slf4j-1.7.7.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/ch/qos/logback/logback-core/1.1.2/logback-core-1.1.2.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/ch/qos/logback/logback-classic/1.1.2/logback-classic-1.1.2.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/boot/spring-boot-starter-logging/1.1.3.RELEASE/spring-boot-starter-logging-1.1.3.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/boot/spring-boot-starter/1.1.3.RELEASE/spring-boot-starter-1.1.3.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/yaml/snakeyaml/1.13/snakeyaml-1.13.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/apache/tomcat/embed/tomcat-embed-core/7.0.54/tomcat-embed-core-7.0.54.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/apache/tomcat/embed/tomcat-embed-el/7.0.54/tomcat-embed-el-7.0.54.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/apache/tomcat/embed/tomcat-embed-logging-juli/7.0.54/tomcat-embed-logging-juli-7.0.54.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/boot/spring-boot-starter-tomcat/1.1.3.RELEASE/spring-boot-starter-tomcat-1.1.3.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.3.0/jackson-annotations-2.3.0.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.3.3/jackson-core-2.3.3.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.3.3/jackson-databind-2.3.3.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/javax/validation/validation-api/1.1.0.Final/validation-api-1.1.0.Final.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/com/fasterxml/classmate/1.0.0/classmate-1.0.0.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.jboss.logging/jboss-logging/3.1.3.GA/64499e907f19e5e1b3fdc02f81440c1832fe3545/jboss-logging-3.1.3.GA.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/hibernate/hibernate-validator/5.0.3.Final/hibernate-validator-5.0.3.Final.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/spring-web/4.0.5.RELEASE/spring-web-4.0.5.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/springframework/spring-webmvc/4.0.5.RELEASE/spring-webmvc-4.0.5.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.aspectj/aspectjrt/1.8.1/5e7a0fa36cc24ead36d885b9d775bb31ffa8524c/aspectjrt-1.8.1.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.aspectj/aspectjweaver/1.8.1/da75e95c91703667b2ae20acdd3d8ee40ea7aabd/aspectjweaver-1.8.1.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-aop/1.1.3.RELEASE/7c7ce54e7c7a7c4d56eb527856a7baffa15af349/spring-boot-starter-aop-1.1.3.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework/spring-tx/4.0.5.RELEASE/bc94807ffcf9a6934428eb7ecdf9c37c41dd95a1/spring-tx-4.0.5.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework/spring-jdbc/4.0.5.RELEASE/464e18d797ef5f2f19e6b8c151ca0b196c806ad3/spring-jdbc-4.0.5.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.apache.tomcat/tomcat-juli/7.0.54/b1ab768678cb729831ed6ae926a90ab6f0974a60/tomcat-juli-7.0.54.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.apache.tomcat/tomcat-jdbc/7.0.54/c325fb6d376df8bb34de0252aef2f7472658d4d7/tomcat-jdbc-7.0.54.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/jboss/logging/jboss-logging-annotations/1.2.0.Beta1/jboss-logging-annotations-1.2.0.Beta1.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/xml-apis/xml-apis/1.0.b2/xml-apis-1.0.b2.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/dom4j/dom4j/1.6.1/dom4j-1.6.1.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/hibernate/common/hibernate-commons-annotations/4.0.4.Final/hibernate-commons-annotations-4.0.4.Final.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/hibernate/javax/persistence/hibernate-jpa-2.1-api/1.0.0.Final/hibernate-jpa-2.1-api-1.0.0.Final.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/jboss/spec/javax/transaction/jboss-transaction-api_1.2_spec/1.0.0.Final/jboss-transaction-api_1.2_spec-1.0.0.Final.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/javassist/javassist/3.18.1-GA/javassist-3.18.1-GA.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/antlr/antlr/2.7.7/antlr-2.7.7.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/jboss/jandex/1.1.0.Final/jandex-1.1.0.Final.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.hibernate/hibernate-core/4.3.5.Final/8ba469a4749447a8e9a04f229c8017f60f9a04c9/hibernate-core-4.3.5.Final.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.hibernate/hibernate-entitymanager/4.3.5.Final/d5e18e531ffa6fde84b998d2fbf796663a8b112d/hibernate-entitymanager-4.3.5.Final.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework/spring-orm/4.0.5.RELEASE/8e2a686e8fb135fafbfb6eb97d55f0948c5b0467/spring-orm-4.0.5.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework.data/spring-data-commons/1.8.0.RELEASE/6db4c9700bc71677068c227422b0538be2271490/spring-data-commons-1.8.0.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework.data/spring-data-jpa/1.6.0.RELEASE/a2ba2a2efe54814e2768a70bab78dc2b42476a90/spring-data-jpa-1.6.0.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework/spring-aspects/4.0.5.RELEASE/14c28dda1fe39e1a0b216eb80e5b87df6fa938c8/spring-aspects-4.0.5.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework.security/spring-security-core/3.2.4.RELEASE/493bc57396a821e8ffa7d99fac77cc79c15e9b7f/spring-security-core-3.2.4.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework.security/spring-security-config/3.2.4.RELEASE/952da051fc959b215c8e5882a7ab1ca5137af036/spring-security-config-3.2.4.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework.security/spring-security-web/3.2.4.RELEASE/197d803ab63dd3523d9df186505fc1cc93044334/spring-security-web-3.2.4.RELEASE.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/objenesis/objenesis/1.0/objenesis-1.0.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/mockito/mockito-core/1.9.5/mockito-core-1.9.5.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.m2/repository/org/hamcrest/hamcrest-library/1.3/hamcrest-library-1.3.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="/home/toni/.gradle/caches/modules-2/files-2.1/org.springframework/spring-test/4.0.5.RELEASE/caa3ead3ab38ecaa979ec7054fdfc1b73d36f916/spring-test-4.0.5.RELEASE.jar"/>
+        </jar>
+    </target>
+</project>

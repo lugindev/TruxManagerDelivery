@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/list_selector"
+    android:orientation="horizontal"
+    android:padding="7dip"
+    android:id="@+id/rowLayout">
+
+    <!--  ListRow Left sied Thumbnail image -->
+    <LinearLayout android:id="@+id/thumbnail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="3dip"
+        android:layout_alignParentLeft="true"
+        android:background="@android:color/transparent"
+        android:layout_marginRight="0dip">
+
+        <ImageView
+            android:layout_marginRight="20dp"
+            android:id="@+id/list_image"
+            android:layout_width="60dip"
+            android:layout_height="60dip"
+            android:background="@android:color/transparent"
+            android:src="@drawable/truck_yellow"/>
+
+    </LinearLayout>
+
+    <!-- Immatriculation-->
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/thumbnail"
+        android:layout_toRightOf="@+id/thumbnail"
+        android:text="No 567099787"
+        android:textColor="#040404"
+        android:typeface="monospace"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:gravity="left" />
+
+    <!-- Type de matériel -->
+    <TextView
+        android:id="@+id/detail"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/title"
+        android:textColor="#343434"
+        android:textSize="18sp"
+        android:layout_marginTop="1dip"
+        android:layout_toRightOf="@+id/thumbnail"
+        android:text="23-10-2016 07:45" />
+
+    <!-- image number -->
+    <TextView
+        android:gravity="center"
+        android:id="@+id/photoNumber"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2 images"
+        android:textSize="12sp"
+        android:textColor="#fffb0515"
+        android:textStyle="bold"
+        android:layout_below="@+id/thumbnail"
+        android:layout_alignRight="@+id/thumbnail"
+        android:layout_alignEnd="@+id/thumbnail"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <!-- Rightend Duration -->
+    <ImageView
+        android:id="@+id/delete"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_alignParentRight="true"
+        android:layout_centerVertical="true"
+
+        android:gravity="right"
+        android:src="@android:drawable/presence_busy"
+
+        android:layout_marginRight="5dip" />
+
+</RelativeLayout>

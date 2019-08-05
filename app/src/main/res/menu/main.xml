@@ -1,0 +1,49 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="ch.parolini.truxmanager.delivery.MainActivity" >
+
+    <item android:id="@+id/action_supprimer_photos"
+        android:title="@string/action_effacer"
+        android:orderInCategory="100"
+        app:showAsAction="always" />
+
+    <item android:id="@+id/action_supprimerbon"
+        android:title="@string/action_supprimer"
+        android:orderInCategory="200"
+        app:showAsAction="always" />
+
+    <item android:id="@+id/action_photo"
+        android:title="@string/action_photo"
+        android:orderInCategory="300"
+        app:iconTint="#ffffff"
+        android:icon="@drawable/img_photo"
+        app:showAsAction="always" />
+
+    <item android:id="@+id/action_gallery"
+        android:title="@string/action_gallery"
+        android:orderInCategory="400"
+        app:iconTint="#ffffff"
+        android:icon="@drawable/img_gallery"
+        app:showAsAction="always" />
+
+    <item android:id="@+id/action_gallery_mult"
+        android:title="@string/action_gallery"
+        android:orderInCategory="500"
+        app:iconTint="#ffffff"
+        android:icon="@drawable/img_gallery_multiple"
+        app:showAsAction="always" />
+
+    <item android:id="@+id/action_parametres"
+        android:title="@string/action_parametres"
+        android:orderInCategory="600"
+        app:iconTint="#ffffff"
+        app:showAsAction="never" />
+    <!--<item android:id="@+id/action_sychronizer"
+        android:title="@string/action_synchro"
+        android:orderInCategory="500"
+        app:iconTint="#ffffff"
+        app:showAsAction="never" />
+    android:icon="@drawable/ic_search"    android:icon="@drawable/img_supprimer"-->
+
+</menu>

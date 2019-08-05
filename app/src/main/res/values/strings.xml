@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Trux Manager</string>
+    <string name="splash_title">Trux Manager</string>
+    <string name="splash_subtitle">Delivery</string>
+    <string name="app_version">Version RC2 Parolini 2016</string>
+    <string name="weightingsTodo">Pesages en cour</string>
+    <string name="action_synchro">Sychronization</string>
+    <string name="action_free">Pesage libre</string>
+    <string name="list_vide"></string>
+    <string name="connected">En ligne</string>
+    <string name="connecting">Connexion...</string>
+    <string name="nothingtodo">Aucuns pesages pour le moment</string>
+    <string name="DIALOG_ACTION_TITLE">OPTIONS IMAGES</string>
+    <string name="QUESTION_ERASE_PICS">Voulez-vous d\'abord effacer les photos déjà effectuées sur ce bon de oommande ? </string>
+    <string name="error_bad_credentials">"Le code secret n'est pas correct"</string>
+    <string name="comm_error">Erreur de connexion: </string>
+    <string name="title_activity_bar_code">BarCodeActivity</string>
+    <string name="menu_takePicture">Prendre un photo</string>
+    <string name="menu_clean_order">Supprimer les photos</string>
+    <string name="menu_delete_order">supprimer ordre</string>
+    <string name="menu_fromGallery">Choisir dans la gallerie</string>
+    <string name="action_gallery">gallery</string>
+    <string name="search_title">Recherche</string>
+    <string name="supprimer_bon">Annluler la suppression du bon</string>
+    <string name="annuler">ANNULER</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="action_parametres">Paramètres</string>
+    <string name="action_effacer">Effacer</string>
+    <string name="action_supprimer">Supprimer</string>
+    <string name="default_operation">Evenement au click</string>
+    <string name="qualite_image">Qualité d\'image:</string>
+    <string name="action_photo">Photos</string>
+    <string name="ok">Ok</string>
+    <string name="default_action">Selection:</string>
+    <string name="image_action">Prévisualisation :</string>
+    <string name="fichier_action">Effacement image:</string>
+    <string name="titre_image">Images</string>
+    <string name="titre_action_selection">Interaction</string>
+    <string name="theme_action">Theme:</string>
+    <string name="taille_action">Taille:</string>
+    <string name="titre_Therme">Theme</string>
+</resources>

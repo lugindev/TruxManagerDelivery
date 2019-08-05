@@ -1,0 +1,25 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="ch.parolini.truxmanager.delivery.MainActivity" >
+
+
+    <item android:id="@+id/menu_add_image_camera"
+        android:title="@string/menu_takePicture"
+        android:icon="@drawable/ic_action_upload"
+        app:showAsAction="ifRoom" />
+    <item android:id="@+id/menu_add_image_galley"
+        android:title="@string/menu_fromGallery"
+        android:icon="@drawable/ic_action_upload"
+        app:showAsAction="ifRoom" />
+    <item android:id="@+id/menu_clean"
+        android:title="@string/menu_clean_order"
+        android:icon="@android:drawable/ic_notification_clear_all"
+        app:showAsAction="ifRoom" />
+
+    <item android:id="@+id/menu_delete"
+        android:title="@string/menu_delete_order"
+        android:icon="@android:drawable/ic_delete"
+        app:showAsAction="ifRoom" />
+
+</menu>

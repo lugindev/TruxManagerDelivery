@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="taille_array">
+        <item>Grande</item>
+        <item>Petite</item>
+    </string-array>
+</resources>

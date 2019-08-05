@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+   <!--<string name="SERVER_ROOT_URL">http://192.168.1.28:8080/trux</string>-->
+   <string name="SERVER_ROOT_URL">http://trux.hq.luginbuhl.ch:8080/trux</string>
+   <string name="SERVER_ROOT_USER" >connect</string>
+   <string name="SERVER_ROOT_PASSWORD" >lulu</string>
+   <integer name="MAX_WEIGHING_AGE_BEFORE_UPLOAD_MINUTES">1</integer>
+   <integer name="SERVICE_SLEEPING_TIME_SECONDS">20</integer>
+   <integer name="CONNECTION_TIMEOUT_SECONDES">10</integer>
+</resources>

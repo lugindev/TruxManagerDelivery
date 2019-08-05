@@ -1,0 +1,8 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="ch.parolini.truxmanager.delivery.MainActivity" >
+
+    <!--android:icon="@drawable/ic_search"    android:icon="@drawable/img_supprimer"-->
+
+</menu>

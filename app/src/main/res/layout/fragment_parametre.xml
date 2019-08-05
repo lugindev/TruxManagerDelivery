@@ -1,0 +1,278 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white"
+    android:clickable="true"
+    android:orientation="vertical"
+    tools:context="ch.parolini.truxmanager.delivery.FragmentParametres">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="0sp"
+        android:textSize="20sp"
+        android:layout_marginTop="15sp"
+        android:paddingLeft="20sp"
+        android:paddingBottom="10sp"
+        android:textStyle="bold"
+        android:text="@string/titre_Therme" />
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="1sp"
+        android:background="#E0E0E0"
+        android:id="@+id/separator0"
+        android:layout_alignBottom="@+id/status"
+
+        />
+
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingLeft="0dp"
+        android:paddingRight="16dp"
+        android:padding="20sp"
+        android:orientation="horizontal"
+        android:background="@android:color/white"
+        android:layout_marginTop="0sp">
+        <TextView
+            android:id="@+id/version_name"
+            android:layout_width="150sp"
+            android:layout_height="wrap_content"
+            android:layout_margin="0sp"
+            android:textSize="16sp"
+            android:layout_marginTop="0sp"
+            android:text="@string/theme_action" />
+        <TextView
+            android:id="@+id/version_code"
+            android:layout_width="150sp"
+            android:layout_height="wrap_content"
+            android:layout_margin="0sp"
+            android:textSize="16sp"
+            android:layout_marginTop="0sp"
+            android:text="@string/theme_action" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="1sp"
+        android:background="#E0E0E0"
+        android:id="@+id/separator2"
+        android:layout_alignBottom="@+id/status"
+
+        />
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/white"
+        android:paddingLeft="0dp"
+        android:paddingRight="10dp"
+        android:padding="20sp"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="0sp"
+            android:textSize="20sp"
+           android:layout_marginTop="0sp"
+            android:paddingLeft="20sp"
+            android:paddingBottom="10sp"
+            android:textStyle="bold"
+            android:text="@string/titre_image" />
+        <View
+            android:layout_width="fill_parent"
+            android:layout_height="1sp"
+            android:background="#E0E0E0"
+            android:id="@+id/separator"
+            android:layout_alignBottom="@+id/status"
+
+            />
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/lin_qualite"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="0sp"
+        android:background="@android:color/white"
+        android:paddingLeft="0dp"
+        android:paddingRight="16dp"
+        android:padding="20sp"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="150sp"
+            android:layout_height="wrap_content"
+            android:layout_margin="0sp"
+            android:textSize="16sp"
+            android:layout_marginTop="0sp"
+            android:text="@string/qualite_image" />
+        <Spinner
+            android:id="@+id/qualite_spinner"
+            android:layout_width="160sp"
+            android:layout_height="wrap_content"
+            android:padding="0sp"
+            android:textSize="16sp"/>
+    </LinearLayout>
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="0dp"
+            android:paddingRight="16dp"
+            android:padding="20sp"
+            android:orientation="horizontal"
+            android:background="@android:color/white"
+            android:layout_marginTop="0sp"
+            android:layout_alignBottom="@+id/lin_default">
+            <TextView
+                android:layout_width="150sp"
+                android:layout_height="wrap_content"
+                android:layout_margin="0sp"
+                android:textSize="16sp"
+                android:layout_marginTop="0sp"
+                android:text="@string/fichier_action" />
+            <Spinner
+                android:id="@+id/fichier_action_spinner"
+                android:layout_width="160sp"
+                android:layout_height="wrap_content"
+                android:padding="0sp"
+                android:textSize="16sp"/>
+        </LinearLayout>
+        />
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="0dp"
+            android:paddingRight="16dp"
+            android:padding="20sp"
+            android:orientation="horizontal"
+            android:background="@android:color/white"
+            android:layout_marginTop="0sp"
+            android:layout_alignBottom="@+id/lin_qualite">
+            <TextView
+                android:layout_width="150sp"
+                android:layout_height="wrap_content"
+                android:layout_margin="0sp"
+                android:textSize="16sp"
+                android:layout_marginTop="0sp"
+                android:text="@string/taille_action" />
+            <Spinner
+                android:id="@+id/taille_action_spinner"
+                android:layout_width="160sp"
+                android:layout_height="wrap_content"
+                android:padding="0sp"
+                android:textSize="16sp"/>
+        </LinearLayout>
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:id="@+id/lin_image"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="0dp"
+            android:paddingRight="0dp"
+            android:padding="20sp"
+            android:orientation="horizontal"
+            android:layout_marginTop="0sp"
+            android:background="@android:color/white"
+            android:layout_alignBottom="@+id/lin_default">
+            <TextView
+                android:layout_width="150sp"
+                android:layout_height="wrap_content"
+                android:layout_margin="0sp"
+                android:textSize="16sp"
+                android:layout_marginTop="0sp"
+                android:text="@string/image_action" />
+            <Spinner
+                android:id="@+id/image_action_spinner"
+                android:layout_width="160sp"
+                android:layout_height="wrap_content"
+                android:padding="0sp"
+                android:textSize="16sp"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="0sp"
+            android:textSize="20sp"
+            android:paddingLeft="20sp"
+            android:paddingBottom="10sp"
+            android:textStyle="bold"
+            android:layout_marginTop="0sp"
+            android:text="@string/titre_action_selection" />
+        <View
+            android:layout_width="fill_parent"
+            android:layout_height="1sp"
+            android:background="#E0E0E0"
+            android:id="@+id/separator3"
+            android:layout_alignBottom="@+id/status"
+
+            />
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/lin_default"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingLeft="0dp"
+        android:paddingRight="16dp"
+        android:padding="20sp"
+        android:orientation="horizontal"
+        android:background="@android:color/white"
+        android:layout_marginTop="0sp"
+        android:layout_alignBottom="@+id/lin_qualite">
+        <TextView
+            android:layout_width="150sp"
+            android:layout_height="wrap_content"
+            android:layout_margin="0sp"
+            android:textSize="16sp"
+            android:layout_marginTop="0sp"
+            android:text="@string/default_action" />
+        <Spinner
+            android:id="@+id/default_action_spinner"
+            android:layout_width="160sp"
+            android:layout_height="wrap_content"
+            android:padding="0sp"
+            android:textSize="16sp"/>
+    </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="0sp"
+            android:textSize="20sp"
+            android:layout_marginTop="15sp"
+            android:paddingLeft="20sp"
+            android:paddingBottom="10sp"
+            android:textStyle="bold"
+            android:text="@string/titre_Therme" />
+        <View
+            android:layout_width="fill_parent"
+            android:layout_height="1sp"
+            android:background="#E0E0E0"
+            android:id="@+id/separator4"
+            android:layout_alignBottom="@+id/status"
+
+            />
+
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="0dp"
+            android:paddingRight="16dp"
+            android:padding="20sp"
+            android:orientation="horizontal"
+            android:background="@android:color/white"
+            android:layout_marginTop="0sp">
+            <TextView
+                android:layout_width="150sp"
+                android:layout_height="wrap_content"
+                android:layout_margin="0sp"
+                android:textSize="16sp"
+                android:layout_marginTop="0sp"
+                android:text="@string/theme_action" />
+            <Spinner
+                android:id="@+id/theme_action_spinner"
+                android:layout_width="160sp"
+                android:layout_height="wrap_content"
+                android:padding="0sp"
+                android:textSize="16sp"/>
+        </LinearLayout>
+
+
+    </LinearLayout>
+</FrameLayout>
