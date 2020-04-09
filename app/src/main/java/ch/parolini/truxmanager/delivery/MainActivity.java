@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -28,6 +29,7 @@ import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
@@ -39,6 +41,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.text.Html;
 import android.util.Log;
 import android.view.ContextMenu;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -75,6 +78,7 @@ import ch.parolini.truxmanager.delivery.model.Order;
 import android.graphics.BitmapFactory;
 import android.media.ExifInterface;
 import android.util.DisplayMetrics;
+import android.widget.Toast;
 
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPFile;
@@ -120,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_CHANGE_WIFI_STATE = 115;
     private static final int REQUEST_ACCESS_NETWORK_STATE = 116;
     private static final int PERMISSION_RECEIVE_BOOT_COMPLETED = 117;
+    private static final int PERMISSION_CAMERA = 118;
     public static boolean active;
     public boolean clearPhoto = false;
     private FloatingActionButton addButton;
@@ -149,7 +154,6 @@ public class MainActivity extends AppCompatActivity {
     private int nbTotalOrdre = 0;
     private boolean _blockSynchro = false;
     private boolean snackBarInfo = true;
-    private BroadcastReceiver _receiverEtatDuTelephone = new BootLoadReceiver();
     int PICK_IMAGE_MULTIPLE = 1;
     int PICK_IMAGE_MULTIPLE1 = 2;
     String imageEncoded;
@@ -186,6 +190,9 @@ public class MainActivity extends AppCompatActivity {
     private Requetes requetesBaseDeDonneeInterne;
     private Bitmap scaledBitmap;
     private Thread one;
+    Uri imageUri;
+    private File imageFile;
+
     //private HttpClient client;
 
 
@@ -201,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
         MainActivity.this.setTitle(Html.fromHtml("Liste des bons"));
         boolean hasPermission = (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED);
@@ -258,6 +265,14 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.RECEIVE_BOOT_COMPLETED},
                     PERMISSION_RECEIVE_BOOT_COMPLETED);
+        }
+
+        boolean hasPermission7 = (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED);
+        if (!hasPermission7) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.CAMERA},
+                    PERMISSION_CAMERA);
         }
 
         if (lectureDesParametres("action_default").equals("")) {
@@ -579,6 +594,8 @@ public class MainActivity extends AppCompatActivity {
     };
 
 
+
+
     public void updateOrderListView() {
         ListView list = (ListView) findViewById(R.id.list);
 
@@ -688,6 +705,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+
+
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
@@ -741,6 +760,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
 
+
+
         if (getSupportFragmentManager().getBackStackEntryCount() > 1) {
             getSupportFragmentManager().popBackStack();
             return;
@@ -786,19 +807,27 @@ public class MainActivity extends AppCompatActivity {
      */
     private void showCamera(Order order) {
         //  Bundle extras=getIntent().getExtras();
+
         File folder = FileManager.getImageFolder();
 
         // avoid to start upload pics to server during the picture taken process
-        order.touch();
+       // order.touch();*/
 
-        //currentPictureFile = new File(folder.getPath() + "/" + FileManager.createNewImageFileNameForOrder(order.getOrderNumber()));
+        currentPictureFile = new File(folder.getPath() + "/" + FileManager.createNewImageFileNameForOrder(order.getOrderNumber()));
         currentPictureFile = FileManager.createNewImageFileForOrder(order.getOrderNumber());
         Uri outputFileUri = Uri.fromFile(currentPictureFile); // create a file to save the image
 
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        intent.putExtra(MediaStore.EXTRA_OUTPUT, outputFileUri); // set the image file name
-
-        startActivityForResult(intent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE);
+        //(intent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE);
+        //ContentValues values = new ContentValues();
+        String deviceName = android.os.Build.MODEL;
+        String deviceMan = android.os.Build.MANUFACTURER;
+        Log.i("Manufacturer",deviceName);
+        Log.i("Manufacturer",deviceMan);
+        imageUri = outputFileUri;
+        imageFile = new File(imageUri.getPath());
+        Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+        startActivityForResult(cameraIntent,CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE);
     }
 
     /**
@@ -837,8 +866,42 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+
     @Override
     protected void onActivityResult(final int requestCode, final int resultCode, final Intent data) {
+
+        if (requestCode == CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE && (resultCode == 0 || resultCode == RESULT_OK) && currentPictureFile.length()!=0) {
+            //Toast.makeText(this, "Nouvelle image rajoutée! ", Toast.LENGTH_SHORT).show();
+            one = new Thread() {
+                public void run() {
+                    OrderManager.currentOrder.addNewPicture(currentPictureFile);
+                    try {
+                        requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
+                        requetesBaseDeDonneeInterne.open();
+                        requetesBaseDeDonneeInterne.ajouterImage(currentPictureFile.getPath());
+                        currentPictureFile = null;
+
+                    } catch (Exception e) {
+
+                    } finally {
+                    }
+
+                    try {
+                        VariablesGlobales.syncNoUpdate = true;
+                        showCamera(OrderManager.currentOrder);
+                    } catch (RuntimeException e) {
+
+                    }
+                }
+
+            };
+
+            one.start();
+            Log.d("adding_path", "adding path: " + currentPictureFile.toString());
+
+            // From gallery
+        }
+
 
         IntentResult scanningResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
         if (scanningResult != null) {
@@ -856,37 +919,9 @@ public class MainActivity extends AppCompatActivity {
                 //Toast.makeText(this, "Scan annulé.", Toast.LENGTH_SHORT).show();
             }
 
-        } else if (requestCode == CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
+        } else if (requestCode == CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE && resultCode == RESULT_OK) {
             //Toast.makeText(this, "Nouvelle image rajoutée! ", Toast.LENGTH_SHORT).show();
-            one = new Thread() {
-                public void run() {
-            OrderManager.currentOrder.addNewPicture(currentPictureFile);
-            try {
-                requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
-                requetesBaseDeDonneeInterne.open();
-                requetesBaseDeDonneeInterne.ajouterImage(currentPictureFile.getPath());
 
-                    requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
-                    requetesBaseDeDonneeInterne.open();
-                    _listImages = new ArrayList<>();
-                    _listImages = (ArrayList<String[]>) requetesBaseDeDonneeInterne.selectImages();
-
-            } catch (Exception e) {
-
-            } finally {
-            }
-                }
-            };
-
-            one.start();
-            Log.d("trux", "adding path: " + currentPictureFile.toString());
-            try {
-                VariablesGlobales.syncNoUpdate = true;
-                showCamera(OrderManager.currentOrder);
-            } catch (RuntimeException e) {
-
-            }
-            // From gallery
         }
 
 
@@ -899,7 +934,11 @@ public class MainActivity extends AppCompatActivity {
                         // Get the Image from data
                         imagesEncodedList = new ArrayList<String>();
                         if (data.getClipData() != null) {
+                            /*try {
+                                Thread.sleep(2000);
+                            } catch (InterruptedException e) {
 
+                            }*/
                             Uri mImageUri = null;
                             for (int i = 0; i < data.getClipData().getItemCount(); i++) {
                                 mImageUri = data.getClipData().getItemAt(i).getUri();
@@ -931,24 +970,26 @@ public class MainActivity extends AppCompatActivity {
                                         //filePath = "/storage/emulated/0/Pictures/TruxManager/" + tab[tab.length-1];
                                         //Log.i("mImageUri", filePath);
 
-                                            File imageCopy = FileManager.copyImageFromGallery(new File(filePath), VariablesGlobales.currentOrder.getOrderNumber());
-                                            VariablesGlobales.currentOrder.addNewPicture(imageCopy);
-                                            try {
-                                                requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
-                                                requetesBaseDeDonneeInterne.open();
-                                                requetesBaseDeDonneeInterne.ajouterImage(imageCopy.getPath());
-                                                // imageCopy.delete();
+                                        File imageCopy = FileManager.copyImageFromGallery(new File(filePath), VariablesGlobales.currentOrder.getOrderNumber());
+                                        VariablesGlobales.currentOrder.addNewPicture(imageCopy);
 
-                                            } catch (Exception e) {
+                                        try {
+                                            requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
+                                            requetesBaseDeDonneeInterne.open();
+                                            requetesBaseDeDonneeInterne.ajouterImage(imageCopy.getPath());
+                                            requetesBaseDeDonneeInterne.close();
+                                            // imageCopy.delete();
 
-                                            } finally {
-                                            }
+                                        } catch (Exception e) {
 
-
-                                            //Toast.makeText(this, "Nouvelle image rajoutée! ", Toast.LENGTH_SHORT).show();
-                                        } catch(IOException e){
-                                            e.printStackTrace();
+                                        } finally {
                                         }
+
+
+                                        //Toast.makeText(this, "Nouvelle image rajoutée! ", Toast.LENGTH_SHORT).show();
+                                    } catch(IOException e){
+
+                                    }
 
                                 }
 
@@ -966,6 +1007,11 @@ public class MainActivity extends AppCompatActivity {
                                 OrderManager.persistOrdersToLocalStorage(getBaseContext());
 
                                 //cursor.close();
+                                try {
+                                    Thread.sleep(500);
+                                } catch (InterruptedException e) {
+
+                                }
                             }
                             if (isMyServiceRunning(ServiceUpload.class) == false) {
                                 startService(new Intent(getBaseContext(), ServiceUpload.class));
@@ -1204,13 +1250,22 @@ public class MainActivity extends AppCompatActivity {
         snackBarInfo=false;
 
 
-            if(isMyServiceRunning(ServiceUpload.class)==false) {
-                startService(new Intent(this, ServiceUpload.class));
-            }
+        if(isMyServiceRunning(ServiceUpload.class)==false) {
+            startService(new Intent(this, ServiceUpload.class));
+        }
 
 
 
 
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_POWER) {
+            // do what you want with the power button
+            Toast.makeText(MainActivity.this, "Your LongPress Power Button", Toast.LENGTH_SHORT).show();
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     @SuppressLint("ResourceType")
@@ -1413,6 +1468,12 @@ public class MainActivity extends AppCompatActivity {
                     //Toast.makeText(this, "The app was not allowed to write to your storage. Hence, it cannot function properly. Please consider granting it this permission", Toast.LENGTH_LONG).show();
                 }
             }
+            case CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE:{
+                if (grantResults.length > 0 && grantResults[0]==PackageManager.PERMISSION_GRANTED){
+                    //openCamera();
+                } else {
+                }
+                }
         }
 
     }
@@ -1763,7 +1824,7 @@ public class MainActivity extends AppCompatActivity {
             }*/
 
 
-            //ByteArrayOutputStream out = new ByteArrayOutputStream();
+    //ByteArrayOutputStream out = new ByteArrayOutputStream();
 
 
 
@@ -1800,18 +1861,18 @@ public class MainActivity extends AppCompatActivity {
                 }
 
             }*/
-            //fis.read(out.toByteArray());
+    //fis.read(out.toByteArray());
 
-            // Log.i("QualiteEnvoi", lectureDesParametres1("qualite_photos"));
+    // Log.i("QualiteEnvoi", lectureDesParametres1("qualite_photos"));
 
-            // Get length of file in bytes
-            //fileSizeInBytes = file.length();
-            // Convert the bytes to Kilobytes (1 KB = 1024 Bytes)
-
-
+    // Get length of file in bytes
+    //fileSizeInBytes = file.length();
+    // Convert the bytes to Kilobytes (1 KB = 1024 Bytes)
 
 
-            //b = fis1.
+
+
+    //b = fis1.
 
 // Remove the temp file
 
@@ -1821,7 +1882,7 @@ public class MainActivity extends AppCompatActivity {
 // Get stream from temp (exif loaded) file
 
 // Remove the temp file
-            //boolean deleted = tempFilePath.delete();
+    //boolean deleted = tempFilePath.delete();
 
 // Finalize
 

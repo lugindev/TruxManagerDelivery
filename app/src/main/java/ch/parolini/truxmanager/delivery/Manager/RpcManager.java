@@ -180,7 +180,7 @@ public class RpcManager {
                         renameFile(file.getPath(), orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg");
                         _path = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
                     } else {
-                        SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd_HH:mm.SSS");//dd/MM/yyyy
+                        SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd_HH:mm");//dd/MM/yyyy
                         Date now = new Date();
                         String strDate = sdfDate.format(now);
                         date = strDate.substring(0, 10).replace(":", "-");

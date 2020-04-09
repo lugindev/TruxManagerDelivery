@@ -2,8 +2,10 @@ package ch.parolini.truxmanager.delivery;
 
 import android.annotation.TargetApi;
 import android.app.ActivityManager;
+import android.app.AlarmManager;
 import android.app.IntentService;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
@@ -25,6 +27,8 @@ import android.os.StrictMode;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -63,11 +67,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.net.NetworkInterface;
 import java.security.KeyStore;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 import ch.parolini.truxmanager.delivery.Manager.OrderManager;
 import ch.parolini.truxmanager.delivery.basededonnee.Requetes;
@@ -77,6 +84,11 @@ import ch.parolini.truxmanager.delivery.model.Picture;
 public class ServiceUpload extends IntentService {
 
     private static final Object LOCK = "";
+    private static final String CHANNEL_ID = "15" ;
+    private static final int NOTIFICATION_ID = 15 ;
+    private static final String NOTIFICATION_CHANNEL_ID ="15" ;
+    private static final CharSequence NOTIFICATION_CHANNEL_NAME ="notif" ;
+    private static final String NOTIFICATION_CHANNEL_DESC ="15" ;
     private boolean serviceRun = true;
     private ArrayList<String[]> images;
     // Static to avoid loosing the ref when screen orientation changes
@@ -140,6 +152,7 @@ public class ServiceUpload extends IntentService {
     private static boolean inFTP;
     private static FTPClient con = null;
     private static String dateExif;
+    private static String idExif;
 
 
     String imagePath;
@@ -156,11 +169,14 @@ public class ServiceUpload extends IntentService {
     private Bitmap scaledBitmap;
     private Thread one;
     private int nbOrder = 0;
+    private int i = 1;
+    private String _adresse ="";
     //private HttpClient client;
 
 
     public ServiceUpload() {
         super("ServiceUpdate");
+        _adresse = getmacAdress();
     }
 
     @Override
@@ -172,68 +188,95 @@ public class ServiceUpload extends IntentService {
     @Override
     protected void onHandleIntent(@Nullable Intent intent) {
 
+        try {
 
-        Intent notificationIntent = new Intent(this, ServiceUpload.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Intent notificationIntent = new Intent(this, ServiceUpload.class);
 
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+                PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
-        Notification notification = new Notification.Builder(this)
-                .setContentTitle("Trux manager")
-                .setContentText("Envoi image(s) en cours")
-                .setColor(getResources().getColor(R.color.colorPrimaryDark))
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(this,NOTIFICATION_CHANNEL_ID)
+                        .setContentTitle("Trux manager")
+                        .setContentText("Envoi image(s) en cours")
+                        .setColor(getResources().getColor(R.color.colorPrimaryDark))
+                        .setContentIntent(pendingIntent);
+                Notification notification=builder.build();
+                if(Build.VERSION.SDK_INT>=26) {
+                    NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT);
+                    channel.setDescription(NOTIFICATION_CHANNEL_DESC);
+                    NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                    notificationManager.createNotificationChannel(channel);
+                }
+                startForeground(NOTIFICATION_ID, notification);
 
-                .setOnlyAlertOnce(true)
-                .setSmallIcon(R.drawable.truck_green)
+            }else {
 
-                //.setContentIntent(pendingIntent)
-                //.setTicker("Title")
-                //.setPriority(Notification.PRIORITY_MIN)
-                .build();
+                Intent notificationIntent = new Intent(this, ServiceUpload.class);
+
+                PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+
+                Notification notification = new Notification.Builder(this)
+                        .setContentTitle("Trux manager")
+                        .setContentText("Envoi image(s) en cours")
+                        .setColor(getResources().getColor(R.color.colorPrimaryDark))
+
+                        .setOnlyAlertOnce(true)
+                        .setSmallIcon(R.drawable.truck_green)
+
+                        //.setContentIntent(pendingIntent)
+                        //.setTicker("Title")
+                        //.setPriority(Notification.PRIORITY_MIN)
+                        .build();
 
 
-        startForeground(15, notification);
+                startForeground(15, notification);
 
 
-        String ns = Context.NOTIFICATION_SERVICE;
-        NotificationManager nMgr = (NotificationManager) getSystemService(ns);
-        nMgr.cancel(15);
+                String ns = Context.NOTIFICATION_SERVICE;
+                NotificationManager nMgr = (NotificationManager) getSystemService(ns);
+                nMgr.cancel(15);
 
-        Log.d("ServiceUpdate", "Service démarré");
+                Log.d("ServiceUpdateDemmarer", "Service démarré");
 
+
+            }
+        }catch (Exception e){
+
+        }
         while (serviceRun == true) {
             try {
-            List<Order> orders = new ArrayList<>();
-            orders = OrderManager.getOrders();
-            Log.d("ServiceUpdate", "controle photo upload");
-            for (Order order : orders) {
-                for (Picture picture : order.getPictures()) {
+                List<Order> orders = new ArrayList<>();
+                orders = OrderManager.getOrders();
+                Log.d("ServiceUpdate", "controle photo upload");
+                for (Order order : orders) {
+                    for (Picture picture : order.getPictures()) {
 
-                    requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
-                    requetesBaseDeDonneeInterne.open();
-                    images = new ArrayList<>();
-                    images = (ArrayList<String[]>) requetesBaseDeDonneeInterne.selectImagesByName(picture.getFile().getPath());
-                    if (images.size() == 0) {
-                        requetesBaseDeDonneeInterne.ajouterImage(picture.getFile().getPath());
-                        Log.i("notSend", "Image ajoutée " + picture.getFile().getPath());
+                        requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
+                        requetesBaseDeDonneeInterne.open();
+                        images = new ArrayList<>();
+                        images = (ArrayList<String[]>) requetesBaseDeDonneeInterne.selectImagesByName(picture.getFile().getPath());
+                        if (images.size() == 0) {
+                            requetesBaseDeDonneeInterne.ajouterImage(picture.getFile().getPath());
+                            Log.i("notSend", "Image ajoutée " + picture.getFile().getPath());
+                        }
+                        for (String[] path : images) {
+                            Log.i("notSend", "Image envoyer " + picture.getFile().getPath());
+                            EmvoiImage(order.getOrderNumber(), path[1], order, path[0]);
+
+                        }
+
+
                     }
-                    for (String[] path : images) {
-                        Log.i("notSend", "Image envoyer " + picture.getFile().getPath());
-                        EmvoiImage(order.getOrderNumber(), path[1], order, path[0]);
-
-                    }
-
-
                 }
-            }
 
             } catch (Exception e) {
 
-                } finally {
-                    if(requetesBaseDeDonneeInterne != null) {
-                        requetesBaseDeDonneeInterne.close();
-                    }
-
+            } finally {
+                if(requetesBaseDeDonneeInterne != null) {
+                    requetesBaseDeDonneeInterne.close();
                 }
+
+            }
 
             List<Order> orders1= OrderManager.getOrders();
             nbOrder=0;
@@ -242,14 +285,14 @@ public class ServiceUpload extends IntentService {
                 nbOrder = nbOrder + order.getPictureCount();
             }
 
-                if (nbOrder == 0) {
-                    Log.i("StopSelf", "StopSelf");
-                    //NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
-                    //notificationManager.cancel(15);
-                    serviceRun = false;
-                    stopSelf();
-                    break;
-                }
+            if (nbOrder == 0) {
+                Log.i("StopSelf", "StopSelf");
+                //NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
+                //notificationManager.cancel(15);
+                serviceRun = false;
+                stopSelf();
+                break;
+            }
 
 
 
@@ -267,6 +310,7 @@ public class ServiceUpload extends IntentService {
     public synchronized boolean  EmvoiImage(String orderId, String file, Order order, String id) throws IOException {
         original = null;
         resized = null;
+        String _ServeurPath = "";
         boolean result = false;
         try {
 
@@ -278,7 +322,7 @@ public class ServiceUpload extends IntentService {
                 }
             }
 
-            if(con == null){
+            if (con == null) {
                 con = new FTPSClient();
             }
 
@@ -288,7 +332,8 @@ public class ServiceUpload extends IntentService {
 
             if (con.login(ftpUserName, ftpPassword)) {
                 con.enterLocalPassiveMode(); // important!
-                con.setFileType(FTP.BINARY_FILE_TYPE);
+                con.setFileType(FTP.BINARY_FILE_TYPE, FTP.BINARY_FILE_TYPE);
+                con.setFileTransferMode(FTP.BINARY_FILE_TYPE);
             }
 
             FTPFile[] files = new FTPFile[0];
@@ -299,31 +344,32 @@ public class ServiceUpload extends IntentService {
             String[] file2 = requetesBaseDeDonneeInterne.selectImagesByName(file).get(0);
             file = file2[1];
             File f = new File(file);
-            if(!f.exists()) {
-                Log.i("Inrouvable","Fichier introuvable");
+            if (!f.exists()) {
+                Log.i("Inrouvable", "Fichier introuvable");
                 try {
                     requetesBaseDeDonneeInterne.effacerIamgeById(id);
-                    Log.i("Inrouvable","Fichier effacer bd");
+                    Log.i("Inrouvable", "Fichier effacer bd");
                     String date_photo = datePhoto(file);
                     String date = "date";
                     String heure = "heure";
                     String[] files1 = file.split("/");
-                    String newPath = files1[0] +"/"+ files1[1] +"/"+ files1[2] +"/"+ files1[3] +"/"+ files1[4] +"/"+ files1[5];
-                    String _ServeurPath = "";
+                    String newPath = files1[0] + "/" + files1[1] + "/" + files1[2] + "/" + files1[3] + "/" + files1[4] + "/" + files1[5];
+                    String[] name = files1[6].split("_");
+                    String id_photo = name[1];
                     if (!date_photo.equals("")) {
                         date = date_photo.substring(0, 10).replace(":", "-");
                         heure = date_photo.substring(11, date_photo.length());
                         date_photo = date + "_" + heure;
-                        if(!orderId.equals("")) {
-                            renameFile(file, orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg");
-                            _path = newPath + "/" + orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                            _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        }else {
+                        if (!orderId.equals("")) {
+                            renameFile(file, orderId + "_" + date_photo + "_" + _adresse + "_" +  "_" + id_photo + "_" +VariablesGlobales._versionCode + ".jpeg");
+                            _path = newPath + "/" + orderId + "_" + date_photo + "_" + _adresse + "_" +  "_" + id_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
+                            _ServeurPath = orderId + "_" + date_photo + "_" + _adresse + "_" +  "_" + id_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
+                        } else {
                             String orderId1 = file.split("/")[6];
                             orderId = orderId1.split("_")[0];
-                            renameFile(file, orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg");
-                            _path = newPath + "/" + orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                            _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
+                            renameFile(file, orderId + "_" + date_photo + "_" +  "_" + id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg");
+                            _path = newPath + "/" + orderId + "_" + date_photo + "_" +  "_" + id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
+                            _ServeurPath = orderId + "_" + date_photo + "_" +  "_" + id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
                         }
                     } else {
                         SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd_HH:mm.SSS");//dd/MM/yyyy
@@ -332,95 +378,94 @@ public class ServiceUpload extends IntentService {
                         date = strDate.substring(0, 10).replace(":", "-");
                         heure = strDate.substring(11, strDate.length());
                         date_photo = date + "_" + heure;
-                        if(!orderId.equals("")) {
-                            renameFile(file, orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg");
-                            _path = newPath +"/"+ orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg";
-                            _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        }else {
+                        if (!orderId.equals("")) {
+                            renameFile(file, orderId + "_" + strDate + "_" + id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg");
+                            _path = newPath + "/" + orderId + "_" + strDate + "_" +  id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
+                            _ServeurPath = orderId + "_" + date_photo + "_" +  id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
+                        } else {
                             String orderId1 = file.split("/")[6];
                             orderId = orderId1.split("_")[0];
-                            renameFile(file, orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg");
-                            _path = newPath + "/" + orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg";
-                            _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
+                            renameFile(file, orderId + "_" + strDate + "_" +  id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg");
+                            _path = newPath + "/" + orderId + "_" + strDate + "_" +  id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
+                            _ServeurPath = orderId + "_" + date_photo + "_" +  id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
                         }
 
                     }
-                    Log.i("Inrouvable","_ServeurPath" +_ServeurPath);
-                    con.rename("/../photo_trux_manager/" + _ServeurPath," /../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5)+"e.jpeg");
+                    Log.i("Inrouvable", "_ServeurPath" + _ServeurPath);
+                    con.rename("/../photo_trux_manager/" + _ServeurPath, " /../photo_trux_manager/" + _ServeurPath.substring(0, _ServeurPath.length() - 5) + "e.jpeg");
 
                 } catch (Exception e) {
-                    Log.i("Inrouvable","Fichier introuvable bd" +e.getMessage());
+                    Log.i("Inrouvable", "Fichier introuvable bd" + e.getMessage());
                 } finally {
                     requetesBaseDeDonneeInterne.close();
                 }
             }
 
 
-
-            Log.i("FileLength",String.valueOf(f.getName()));
-            if(f.length()>500000){
-
-                String data = file;
-
-                byte[] b = null;
+            Log.i("FileLength", String.valueOf(f.getName()));
 
 
-                String compression = lectureDesParametres1("qualite_photos");
+            String data = file;
+
+            byte[] b = null;
 
 
+            String compression = lectureDesParametres1("qualite_photos");
 
-                //FileInputStream in = new FileInputStream(new File(data));
-                //original = BitmapFactory.decodeStream(in);
-                original = decodeFileForDisplay(new File(data));
-                //original.eraseColor(Color.TRANSPARENT);
-                String date_photo = datePhoto(data);
-                String date = "date";
-                String heure = "heure";
-                String[] files1 = file.split("/");
-                String newPath = files1[0] +"/"+ files1[1] +"/"+ files1[2] +"/"+ files1[3] +"/"+ files1[4] +"/"+ files1[5];
-                String _ServeurPath = "";
-                if (!date_photo.equals("")) {
-                    date = date_photo.substring(0, 10).replace(":", "-");
-                    heure = date_photo.substring(11, date_photo.length());
-                    date_photo = date + "_" + heure;
-                    if(!orderId.equals("")) {
-                        renameFile(file, orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg");
-                        _path = newPath + "/" + orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    }else {
-                        String orderId1 = file.split("/")[6];
-                        orderId = orderId1.split("_")[0];
-                        renameFile(file, orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg");
-                        _path = newPath + "/" + orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    }
+
+            //FileInputStream in = new FileInputStream(new File(data));
+            //original = BitmapFactory.decodeStream(in);
+            original = decodeFileForDisplay(new File(data));
+            //original.eraseColor(Color.TRANSPARENT);
+            String date_photo = datePhoto(data);
+            String date = "date";
+            String heure = "heure";
+            String[] files1 = file.split("/");
+            String newPath = files1[0] + "/" + files1[1] + "/" + files1[2] + "/" + files1[3] + "/" + files1[4] + "/" + files1[5];
+            String[] name = files1[6].split("_");
+            String id_photo = name[1];
+            if (!date_photo.equals("")) {
+                date = date_photo.substring(0, 10).replace(":", "-");
+                heure = date_photo.substring(11, date_photo.length());
+                date_photo = date + "_" + heure;
+                if (!orderId.equals("")) {
+                    renameFile(file, orderId + "_" + date_photo +  "_" + id_photo  + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg");
+                    _path = newPath + "/" + orderId + "_" + date_photo + "_" + id_photo  + "_" + _adresse +   "_"  + VariablesGlobales._versionCode + ".jpeg";
+                    _ServeurPath = orderId + "_" + date_photo + "_" + id_photo + "_" + _adresse + "_"   + VariablesGlobales._versionCode + ".jpeg";
                 } else {
-                    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd_HH:mm.SSS");//dd/MM/yyyy
-                    Date now = new Date();
-                    String strDate = sdfDate.format(now);
-                    date = strDate.substring(0, 10).replace(":", "-");
-                    heure = strDate.substring(11, strDate.length());
-                    date_photo = date + "_" + heure;
-                    if(!orderId.equals("")) {
-                        renameFile(file, orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg");
-                        _path = newPath +"/"+ orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    }else {
-                        String orderId1 = file.split("/")[6];
-                        orderId = orderId1.split("_")[0];
-                        renameFile(file, orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg");
-                        _path = newPath + "/" + orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    }
+                    String orderId1 = file.split("/")[6];
+                    orderId = orderId1.split("_")[0];
+                    renameFile(file, orderId + "_" + date_photo +  "_" + id_photo  + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg");
+                    _path = newPath + "/" + orderId + "_" + date_photo + "_" + id_photo  + "_" + _adresse +   "_"  + VariablesGlobales._versionCode + ".jpeg";
+                    _ServeurPath = orderId + "_" + date_photo + "_" + id_photo + "_" + _adresse + "_"   + VariablesGlobales._versionCode + ".jpeg";
                 }
+            } else {
+                SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd_HH:mm.SSS");//dd/MM/yyyy
+                Date now = new Date();
+                String strDate = sdfDate.format(now);
+                date = strDate.substring(0, 10).replace(":", "-");
+                heure = strDate.substring(11, strDate.length());
+                date_photo = date + "_" + heure;
+                if (!orderId.equals("")) {
+                    renameFile(file, orderId + "_" + strDate + "_" + _adresse +  "_" + id_photo + "_" + VariablesGlobales._versionCode + ".jpeg");
+                    _path = newPath + "/" + orderId + "_" + strDate + "_" + _adresse +  "_" + id_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
+                    _ServeurPath = orderId + "_" + date_photo + "_" + _adresse +  "_" + id_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
+                } else {
+                    String orderId1 = file.split("/")[6];
+                    orderId = orderId1.split("_")[0];
+                    renameFile(file, orderId + "_" + strDate + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg");
+                    _path = newPath + "/" + orderId + "_" + strDate + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
+                    _ServeurPath = orderId + "_" + date_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
+                }
+            }
 
-                Log.i("FileName",file);
-                Log.i("FIleName","_path" +_path);
-                String tempFilePath = getTempFilePath(_path);
-                File tempFile = new File(tempFilePath);
-                filesExist = con.listFiles("/../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5) +"f.jpeg");
+            Log.i("FileName", file);
+            Log.i("FIleName", "_path" + _path);
+            String tempFilePath = getTempFilePath(_path);
+            File tempFile = new File(tempFilePath);
+            //filesExist = con.listFiles("/../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5) +"f.jpeg");
 
-                for (FTPFile file1 : filesExist) {
+                /*for (FTPFile file1 : filesExist) {
                     Log.d("UploadTrue",file1.getName());
                     File target;
                     File target1;
@@ -450,11 +495,10 @@ public class ServiceUpload extends IntentService {
                     }
 
                     return true;
-                }
+                }*/
 
 
-                //ByteArrayOutputStream out = new ByteArrayOutputStream();
-
+            //ByteArrayOutputStream out = new ByteArrayOutputStream();
 
 
 // Get stream from temp (exif loaded) file
@@ -469,39 +513,37 @@ public class ServiceUpload extends IntentService {
                 original.compress(Bitmap.CompressFormat.JPEG, 100, out);
             }*/
 
-                files = con.listFiles("/../photo_trux_manager/" + _ServeurPath);
+            files = con.listFiles("/../photo_trux_manager/" + _ServeurPath);
 
-                long fileSizeInBytes = 0;
-                long fileSizeInKB = 0;
-
-
-                for (FTPFile file1 : files) {
-
-                    // Get file from file name
-                    //File file2 = new File(file.getPath());
-                    inFTP = true;
-
-                    // Convert the bytes to Kilobytes (1 KB = 1024 Bytes)
-                    fileSizeInKB =  file1.getSize();
-                    byte[] byteFile = readFile(tempFile);
-                    if(fileSizeInBytes==fileSizeInKB || fileSizeInKB > fileSizeInBytes ) {
+            long fileSizeInBytes = 0;
+            long fileSizeInKB = 0;
 
 
-                    }
+            for (FTPFile file1 : files) {
+
+                // Get file from file name
+                //File file2 = new File(file.getPath());
+                inFTP = true;
+
+                // Convert the bytes to Kilobytes (1 KB = 1024 Bytes)
+                fileSizeInKB = file1.getSize();
+                byte[] byteFile = readFile(tempFile);
+                if (fileSizeInBytes == fileSizeInKB || fileSizeInKB > fileSizeInBytes) {
+
 
                 }
-                //fis.read(out.toByteArray());
 
-                // Log.i("QualiteEnvoi", lectureDesParametres1("qualite_photos"));
+            }
+            //fis.read(out.toByteArray());
 
-                // Get length of file in bytes
-                //fileSizeInBytes = file.length();
-                // Convert the bytes to Kilobytes (1 KB = 1024 Bytes)
+            // Log.i("QualiteEnvoi", lectureDesParametres1("qualite_photos"));
+
+            // Get length of file in bytes
+            //fileSizeInBytes = file.length();
+            // Convert the bytes to Kilobytes (1 KB = 1024 Bytes)
 
 
-
-
-                //b = fis1.
+            //b = fis1.
 
 // Remove the temp file
 
@@ -511,7 +553,7 @@ public class ServiceUpload extends IntentService {
 // Get stream from temp (exif loaded) file
 
 // Remove the temp file
-                //boolean deleted = tempFilePath.delete();
+            //boolean deleted = tempFilePath.delete();
 
 // Finalize
 
@@ -520,41 +562,80 @@ public class ServiceUpload extends IntentService {
             }*/
 
 
-
-                try {
-                    FileOutputStream out = new FileOutputStream(tempFilePath);
-                    original.compress(Bitmap.CompressFormat.JPEG, Integer.parseInt(compression), out);
-                    copyExif(file, tempFilePath);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+            try {
+                FileOutputStream out = new FileOutputStream(tempFilePath);
+                original.compress(Bitmap.CompressFormat.JPEG, Integer.parseInt(compression), out);
+                copyExif(file, tempFilePath);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
 // Get stream from temp (exif loaded) file
 
-                byte[] byteFile = readFile(tempFile);
-                ByteArrayInputStream fis1 = new ByteArrayInputStream(byteFile);
+            byte[] byteFile = readFile(tempFile);
+            ByteArrayInputStream fis1 = new ByteArrayInputStream(byteFile);
 
 // Remove the temp file
 
 
 // Finalize
-                int fileSize = byteFile.length;
-                con.setRestartOffset(fileSizeInKB);
-                //result = con.storeFile("/../photo_trux_manager/" + _path, new ByteArrayInputStream(b));
+            int fileSize = byteFile.length;
+            con.setRestartOffset(fileSizeInKB);
+            //result = con.storeFile("/../photo_trux_manager/" + _path, new ByteArrayInputStream(b));
 
-                result = con.appendFile("/../photo_trux_manager/" + _ServeurPath, fis1);
+            result = con.appendFile("/../photo_trux_manager/" + _ServeurPath, fis1);
 
 
-                if(result == true){
-                    con.rename("/../photo_trux_manager/" + _ServeurPath," /../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5)+"f.jpeg");
-                    boolean deleted = tempFile.delete();
+            if (result == true) {
+                con.rename("/../photo_trux_manager/" + _ServeurPath, " /../photo_trux_manager/" + _ServeurPath.substring(0, _ServeurPath.length() - 5) + "f.jpeg");
+                filesExist = con.listFiles("/../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5)+"f.jpeg");
+
+                for (FTPFile file1 : filesExist) {
+                    Log.d("UploadTrue",file1.getName());
+                    try {
+                        requetesBaseDeDonneeInterne  = new Requetes(AppContext.getAppContext());
+                        requetesBaseDeDonneeInterne.open();
+                        requetesBaseDeDonneeInterne.effacerIamgeById(id);
+
+                        File target;
+                        File target1;
+                        String[] files2 = _path.split("/");
+
+                        target = new File(file);
+                        target1 = new File(file.substring(0, file.length() - 4) + "_preview.jpeg");
+                        if (target1.exists() && target1.isFile() && target1.canWrite()) {
+                            target1.delete();
+                            Log.d("d_file", "" + target1.getName());
+                        }
+                        if (target.exists() && target.isFile() && target.canWrite()) {
+                            target.delete();
+                            Log.d("d_file", "" + target.getName());
+                        }
+                        order.deleteNumbre();
+                        notifiyOrderSent(order);
+
+
+                    } catch (Exception e) {
+
+                    } finally {
+                    }
+
+                    if (original != null && original.isRecycled() == false) {
+                        original.recycle();
+                    }
+                    if (resized != null && resized.isRecycled() == false) {
+                        resized.recycle();
+                    }
+
+
+                    return true;
                 }
+                //boolean deleted = tempFile.delete();
+            }
 
-                filesExist = con.listFiles("/../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5) +"f.jpeg");
+            //filesExist = con.listFiles("/../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5)+"f.jpeg");
 
-                File target;
-                File target1;
-                String[] files2 = _path.split("/");
+
            /* target = new File(getImageFolder()+"/"+files2[1]);
             target1 = new File(getImageFolder()+"/"+files2[1].substring(0, (getImageFolder()+"/"+files2[1]).length() - 4) + "_preview.jpeg");
             if(filesExist.length!=0) {
@@ -571,71 +652,6 @@ public class ServiceUpload extends IntentService {
                 }
             }*/
 
-                if (original != null && original.isRecycled() == false) {
-                    original.recycle();
-                }
-                if (resized != null && resized.isRecycled() == false) {
-                    resized.recycle();
-                }
-
-
-            }else{
-                try {
-                    requetesBaseDeDonneeInterne  = new Requetes(AppContext.getAppContext());
-                    requetesBaseDeDonneeInterne.open();
-                    requetesBaseDeDonneeInterne.effacerIamgeById(id);
-                    File target;
-                    File target1;
-                    target = new File(file);
-                    target1 = new File(file.substring(0, file.length() - 4) + "_preview.jpeg");
-                    if (target1.exists() && target1.isFile() && target1.canWrite()) {
-                        target1.delete();
-                        Log.d("d_file", "" + target1.getName());
-                    }
-                    if (target.exists() && target.isFile() && target.canWrite()) {
-                        target.delete();
-                        Log.d("d_file", "" + target.getName());
-                    }
-                    order.deleteNumbre();
-                    notifiyOrderSent(order);
-
-
-                } catch (Exception e) {
-
-                } finally {
-                }
-            }
-
-
-
-            if(result == true) {
-                try {
-                    requetesBaseDeDonneeInterne  = new Requetes(AppContext.getAppContext());
-                    requetesBaseDeDonneeInterne.open();
-                    requetesBaseDeDonneeInterne.effacerIamgeById(id);
-
-                    File target;
-                    File target1;
-                    target = new File(file);
-                    target1 = new File(file.substring(0, file.length() - 4) + "_preview.jpeg");
-                    if (target1.exists() && target1.isFile() && target1.canWrite()) {
-                        target1.delete();
-                        Log.d("d_file", "" + target1.getName());
-                    }
-                    if (target.exists() && target.isFile() && target.canWrite()) {
-                        target.delete();
-                        Log.d("d_file", "" + target.getName());
-                    }
-                    order.deleteNumbre();
-                    notifiyOrderSent(order);
-
-
-                } catch (Exception e) {
-
-                } finally {
-                }
-            }
-
 
             Log.i("BaseDeDonnee", result + "_" + _path);
 
@@ -643,6 +659,9 @@ public class ServiceUpload extends IntentService {
 
         } catch (Exception e) {
             Log.i("resultat", false + "_" + e.getMessage() + "_" + _path);
+            con.logout();
+            con.disconnect();
+            con=null;
             //return false;
         } finally {
             if (con != null) {
@@ -667,6 +686,34 @@ public class ServiceUpload extends IntentService {
         return prefs;
 
 
+    }
+
+    public String getmacAdress() {
+        try {
+            List<NetworkInterface> all = Collections.list(NetworkInterface.getNetworkInterfaces());
+            for (NetworkInterface nif : all) {
+                if (!nif.getName().equalsIgnoreCase("wlan0")) continue;
+
+                byte[] macBytes = nif.getHardwareAddress();
+                if (macBytes == null) {
+                    return "";
+                }
+
+                StringBuilder res1 = new StringBuilder();
+                for (byte b : macBytes) {
+                    //res1.append(Integer.toHexString(b & 0xFF) + ":");
+                    res1.append(String.format("%02X:", b));
+                }
+
+                if (res1.length() > 0) {
+                    res1.deleteCharAt(res1.length() - 1);
+                }
+                return res1.toString().replace(":","-");
+            }
+        } catch (Exception ex) {
+        }
+
+        return "";
     }
 
     private static String datePhoto(String filePath) {
@@ -695,6 +742,11 @@ public class ServiceUpload extends IntentService {
             }
         }
         return dateExif;
+    }
+
+    private static String idPhoto(String filePath) {
+
+        return filePath;
     }
 
     public static void SelectionDesParametres() throws Exception {
@@ -861,7 +913,9 @@ public class ServiceUpload extends IntentService {
                         ExifInterface.TAG_MODEL,
                         ExifInterface.TAG_ORIENTATION,
                         ExifInterface.TAG_SUBSEC_TIME,
-                        ExifInterface.TAG_WHITE_BALANCE
+                        ExifInterface.TAG_WHITE_BALANCE,
+                        ExifInterface.TAG_ARTIST
+
                 };
 
 

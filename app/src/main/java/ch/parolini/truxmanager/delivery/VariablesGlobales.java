@@ -22,4 +22,5 @@ public class VariablesGlobales {
     public static int sizeTotal = 0;
     public static int downloaded = 0;
     public static boolean syncNoUpdate = true;
+
 }

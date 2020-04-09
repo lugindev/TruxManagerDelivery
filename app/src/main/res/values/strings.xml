@@ -42,4 +42,5 @@
     <string name="theme_action">Theme:</string>
     <string name="taille_action">Taille:</string>
     <string name="titre_Therme">Theme</string>
+    <string name="titre_info">Info app</string>
 </resources>

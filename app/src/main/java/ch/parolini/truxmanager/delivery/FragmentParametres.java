@@ -2,6 +2,8 @@ package ch.parolini.truxmanager.delivery;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -16,6 +18,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 /**
@@ -34,6 +37,8 @@ public class FragmentParametres extends Fragment {
     private static final String ARG_PARAM2 = "param2";
     private final MainActivity _activite;
 
+
+
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
@@ -43,6 +48,9 @@ public class FragmentParametres extends Fragment {
     public FragmentParametres(MainActivity activity) {
         // Required empty public constructor
         _activite = activity;
+
+
+
     }
 
     /**
@@ -88,10 +96,18 @@ public class FragmentParametres extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        PackageManager manager = _activite.getPackageManager();
+        PackageInfo info = null;
+        try {
+            info = manager.getPackageInfo(_activite.getPackageName(), PackageManager.GET_ACTIVITIES);
+        } catch (PackageManager.NameNotFoundException e) {
 
-        Spinner spinner = (Spinner) getView().findViewById(R.id.qualite_spinner);
+        }
+
+
         TextView txt_view_name = (TextView) getView().findViewById(R.id.version_name);
-        TextView txt_view_code = (TextView) getView().findViewById(R.id.version_code);
+        txt_view_name.setText( "Infos app: " + "Version: " + info.versionName +" "+ "Code: " + info.versionCode);
+        Spinner spinner = (Spinner) getView().findViewById(R.id.qualite_spinner);
 // Create an ArrayAdapter using the string array and a default spinner layout
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getContext(),
                 R.array.qualite_array, android.R.layout.simple_spinner_item);
@@ -145,8 +161,7 @@ public class FragmentParametres extends Fragment {
 // Apply the adapter to the spinner
         spinnerDefault5.setAdapter(adapter5);
 
-        txt_view_name.setText("Nom version: " + VariablesGlobales._versionName);
-        txt_view_code.setText("Code version: " + VariablesGlobales._versionCode);
+
 
         switch (lectureDesParametres("qualite_photos")) {
             case "":

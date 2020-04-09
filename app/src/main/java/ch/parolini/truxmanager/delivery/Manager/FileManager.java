@@ -13,6 +13,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,8 +56,20 @@ public class FileManager {
      */
     public static String createNewImageFileNameForOrder(String orderNumber) {
         //String timeStamp = new SimpleDateFormat("yyyy-MM-dd_HH:mm:ss.SSS").format(new Date());
-        String timeStamp = new SimpleDateFormat("yyyy-MM-dd_HH:mm:ss.SSS").format(new Date());
-        return orderNumber + "_" + timeStamp + "_" + VariablesGlobales._versionCode + ".jpeg" ;
+
+
+        Long tsLong = System.currentTimeMillis()/10;
+        String timeStamp = tsLong.toString();
+        return orderNumber + "_" + timeStamp + "_" + "20" + ".jpeg" ;
+    }
+
+   public static  String randomString( int len ){
+        String AB = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        SecureRandom rnd = new SecureRandom();
+        StringBuilder sb = new StringBuilder( len );
+        for( int i = 0; i < len; i++ )
+            sb.append( AB.charAt( rnd.nextInt(AB.length()) ) );
+        return sb.toString();
     }
 
     public static File createNewImageFileForOrder(String orderNumber) {
