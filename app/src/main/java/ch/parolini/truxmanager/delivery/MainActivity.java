@@ -987,7 +987,7 @@ public class MainActivity extends AppCompatActivity {
 
 
                                         //Toast.makeText(this, "Nouvelle image rajoutée! ", Toast.LENGTH_SHORT).show();
-                                    } catch(IOException e){
+                                    } catch(Exception e){
 
                                     }
 

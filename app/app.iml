@@ -89,7 +89,7 @@
     </content>
     <orderEntry type="jdk" jdkName="Android API 29 Platform" jdkType="Android SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Gradle: __local_aars__:D.\OneDrive\TruxManagerDelivery\app\libs\httpmime-4.1.2.jar:unspecified@jar" level="project" />
+    <orderEntry type="library" name="Gradle: __local_aars__:D.\TruxManagerDelivery\app\libs\httpmime-4.1.2.jar:unspecified@jar" level="project" />
     <orderEntry type="library" name="Gradle: com.google.code.gson:gson:2.3.1@jar" level="project" />
     <orderEntry type="library" name="Gradle: com.google.zxing:core:3.2.1@jar" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.httpcomponents:httpcore:4.4.1@jar" level="project" />

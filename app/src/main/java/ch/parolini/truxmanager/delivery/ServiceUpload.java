@@ -24,6 +24,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.StrictMode;
+import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -688,33 +689,41 @@ public class ServiceUpload extends IntentService {
 
     }
 
-    public String getmacAdress() {
-        try {
-            List<NetworkInterface> all = Collections.list(NetworkInterface.getNetworkInterfaces());
-            for (NetworkInterface nif : all) {
-                if (!nif.getName().equalsIgnoreCase("wlan0")) continue;
-
-                byte[] macBytes = nif.getHardwareAddress();
-                if (macBytes == null) {
-                    return "";
-                }
-
-                StringBuilder res1 = new StringBuilder();
-                for (byte b : macBytes) {
-                    //res1.append(Integer.toHexString(b & 0xFF) + ":");
-                    res1.append(String.format("%02X:", b));
-                }
-
-                if (res1.length() > 0) {
-                    res1.deleteCharAt(res1.length() - 1);
-                }
-                return res1.toString().replace(":","-");
-            }
-        } catch (Exception ex) {
-        }
-
-        return "";
+    public  String getmacAdress() {
+        return insertPeriodically(getDeviceID().toUpperCase(),"-",2);
     }
+
+    String getDeviceID() {
+
+        String device_unique_id = Settings.Secure.getString(AppContext.getAppContext().getContentResolver(),
+                Settings.Secure.ANDROID_ID);
+        return device_unique_id;
+
+    }
+
+
+
+    public static String insertPeriodically(
+            String text, String insert, int period)
+    {
+        StringBuilder builder = new StringBuilder(
+                text.length() + insert.length() * (text.length()/period)+1);
+
+        int index = 0;
+        String prefix = "";
+        while (index < text.length())
+        {
+            // Don't put the insert in the very first iteration.
+            // This is easier than appending it *after* each substring
+            builder.append(prefix);
+            prefix = insert;
+            builder.append(text.substring(index,
+                    Math.min(index + period, text.length())));
+            index += period;
+        }
+        return builder.toString();
+    }
+
 
     private static String datePhoto(String filePath) {
         File file = new File(filePath);
