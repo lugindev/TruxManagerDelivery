@@ -19,6 +19,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.ExifInterface;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
@@ -36,10 +37,12 @@ import android.util.Log;
 import android.view.Menu;
 import android.widget.ListView;
 
+import org.apache.commons.net.PrintCommandListener;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPSClient;
+import org.apache.commons.net.util.TrustManagerUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
 import org.apache.http.client.methods.HttpGet;
@@ -151,7 +154,7 @@ public class ServiceUpload extends IntentService {
     private static boolean _rename;
     private static boolean efface;
     private static boolean inFTP;
-    private static FTPClient con = null;
+    private static ModifiedFTPSClient con = null;
     private static String dateExif;
     private static String idExif;
 
@@ -323,15 +326,29 @@ public class ServiceUpload extends IntentService {
                 }
             }
 
-            if (con == null) {
-                con = new FTPSClient();
+            //ModifiedFTPSClient ftpClient=null;
+            //if (VariablesGlobales.ftpConnexion == null || !VariablesGlobales.ftpConnexion.isConnected()) {
+            try {
+                SelectionDesParametres();
+            } catch (NoClassDefFoundError e) {
+                Log.i("SelectionDesParametres", e.getMessage());
+            } catch (Exception e) {
+
+            }
+            con = new ModifiedFTPSClient(false);
+            con.addProtocolCommandListener(new PrintCommandListener(System.out));
+            con.setTrustManager(TrustManagerUtils.getAcceptAllTrustManager());
+            //InetAddress inetAddress = Inet4Address.getLocalHost();
+            try {
+                con.connect(ftpHostName,21);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
 
+            //}
 
-            con.connect(ftpHostName);
 
-
-            if (con.login(ftpUserName, ftpPassword)) {
+            if ( con.login(ftpUserName,ftpPassword)) {
                 con.enterLocalPassiveMode(); // important!
                 con.setFileType(FTP.BINARY_FILE_TYPE, FTP.BINARY_FILE_TYPE);
                 con.setFileTransferMode(FTP.BINARY_FILE_TYPE);
@@ -690,7 +707,42 @@ public class ServiceUpload extends IntentService {
     }
 
     public  String getmacAdress() {
-        return insertPeriodically(getDeviceID().toUpperCase(),"-",2);
+        try {
+            WifiManager _wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+            if (_wifiManager.isWifiEnabled() == false) {
+                _wifiManager.setWifiEnabled(true);
+                synchronized(LOCK) {
+                    try {
+                        LOCK.wait(2000); // LOCK is not held
+                    } catch (InterruptedException e) {
+
+                    }
+                }
+            }
+            List<NetworkInterface> all = Collections.list(NetworkInterface.getNetworkInterfaces());
+            for (NetworkInterface nif : all) {
+                if (!nif.getName().equalsIgnoreCase("wlan0")) continue;
+
+                byte[] macBytes = nif.getHardwareAddress();
+                if (macBytes == null) {
+                    return "";
+                }
+
+                StringBuilder res1 = new StringBuilder();
+                for (byte b : macBytes) {
+                    //res1.append(Integer.toHexString(b & 0xFF) + ":");
+                    res1.append(String.format("%02X:",b));
+                }
+
+                if (res1.length() > 0) {
+                    res1.deleteCharAt(res1.length() - 1);
+                }
+                return res1.toString();
+            }
+        } catch (Exception ex) {
+        }
+
+        return "";
     }
 
     String getDeviceID() {
