@@ -1,0 +1,9 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="ch.parolini.truxmanager.delivery.MainActivity" >
+    <item android:id="@+id/menu_reload"
+        android:title="@string/menu_takePicture"
+        android:icon="@drawable/refresh"
+        app:showAsAction="always" />
+</menu>
