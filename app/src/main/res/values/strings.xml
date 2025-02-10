@@ -12,12 +12,12 @@
     <string name="connecting">Connexion...</string>
     <string name="nothingtodo">Aucuns pesages pour le moment</string>
     <string name="DIALOG_ACTION_TITLE">OPTIONS IMAGES</string>
-    <string name="QUESTION_ERASE_PICS">Voulez-vous d\'abord effacer les photos déjà effectuées sur ce bon de oommande ? </string>
+    <string name="QUESTION_ERASE_PICS">Voulez-vous d\'abord effacer les medias déjà effectuées sur ce bon de oommande ? </string>
     <string name="error_bad_credentials">"Le code secret n'est pas correct"</string>
     <string name="comm_error">Erreur de connexion: </string>
     <string name="title_activity_bar_code">BarCodeActivity</string>
     <string name="menu_takePicture">Prendre un photo</string>
-    <string name="menu_clean_order">Supprimer les photos</string>
+    <string name="menu_clean_order">Supprimer les medias</string>
     <string name="menu_delete_order">supprimer ordre</string>
     <string name="menu_fromGallery">Choisir dans la gallerie</string>
     <string name="action_gallery">gallery</string>
@@ -27,7 +27,7 @@
 
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="action_parametres">Paramètres</string>
+    <string name="action_parametres">Informations</string>
     <string name="action_effacer">Effacer</string>
     <string name="action_supprimer">Supprimer</string>
     <string name="default_operation">Evenement au click</string>
@@ -43,4 +43,6 @@
     <string name="taille_action">Taille:</string>
     <string name="titre_Therme">Theme</string>
     <string name="titre_info">Info app</string>
+    <string name="action_supprimer_photos_all">Supprimer les medias</string>
+    <string name="whatsapp">whatsapp</string>
 </resources>

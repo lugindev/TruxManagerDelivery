@@ -13,37 +13,58 @@
         android:orderInCategory="200"
         app:showAsAction="always" />
 
-    <item android:id="@+id/action_photo"
-        android:title="@string/action_photo"
-        android:orderInCategory="300"
-        app:iconTint="#ffffff"
-        android:icon="@drawable/img_photo"
-        app:showAsAction="always" />
+    <!--< <item android:id="@+id/whatsapp"
+         android:title="@string/whatsapp"
+         android:orderInCategory="300"
+         app:iconTint="#ffffff"
+         android:icon="@drawable/common_full_open_on_phone"
+         app:showAsAction="always" />-->
 
-    <item android:id="@+id/action_gallery"
-        android:title="@string/action_gallery"
-        android:orderInCategory="400"
-        app:iconTint="#ffffff"
-        android:icon="@drawable/img_gallery"
-        app:showAsAction="always" />
+     <item android:id="@+id/action_photo"
+         android:title="@string/action_photo"
+         android:orderInCategory="300"
+         app:iconTint="#ffffff"
+         android:icon="@drawable/img_photo2"
+         app:showAsAction="always" />
 
-    <item android:id="@+id/action_gallery_mult"
-        android:title="@string/action_gallery"
-        android:orderInCategory="500"
-        app:iconTint="#ffffff"
-        android:icon="@drawable/img_gallery_multiple"
-        app:showAsAction="always" />
+     <item android:id="@+id/action_gallery"
+         android:title="@string/action_gallery"
+         android:orderInCategory="400"
+         app:iconTint="#ffffff"
+         android:icon="@drawable/img_gallery_multiple"
+         app:showAsAction="always" />
 
-    <item android:id="@+id/action_parametres"
-        android:title="@string/action_parametres"
-        android:orderInCategory="600"
-        app:iconTint="#ffffff"
-        app:showAsAction="never" />
-    <!--<item android:id="@+id/action_sychronizer"
-        android:title="@string/action_synchro"
-        android:orderInCategory="500"
-        app:iconTint="#ffffff"
-        app:showAsAction="never" />
-    android:icon="@drawable/ic_search"    android:icon="@drawable/img_supprimer"-->
+     <item android:id="@+id/action_video_simple"
+         android:title="@string/action_gallery"
+         android:orderInCategory="500"
+         app:iconTint="#ffffff"
+         android:icon="@drawable/img_video_simple"
+         app:showAsAction="always" />
+
+     <item android:id="@+id/action_video_mult"
+         android:title="@string/action_gallery"
+         android:orderInCategory="500"
+         app:iconTint="#ffffff"
+         android:icon="@drawable/img_video"
+         app:showAsAction="always" />
+
+     <item android:id="@+id/action_parametres"
+         android:title="@string/action_parametres"
+         android:orderInCategory="600"
+         app:iconTint="#ffffff"
+         app:showAsAction="never" />
+     <item android:id="@+id/action_supprimer_photos_all"
+         android:title="@string/action_supprimer_photos_all"
+         android:orderInCategory="600"
+         app:iconTint="#ffffff"
+         app:showAsAction="never" />
+
+
+     <!--<item android:id="@+id/action_sychronizer"
+         android:title="@string/action_synchro"
+         android:orderInCategory="500"
+         app:iconTint="#ffffff"
+         app:showAsAction="never" />
+     android:icon="@drawable/ic_search"    android:icon="@drawable/img_supprimer"-->
 
 </menu>

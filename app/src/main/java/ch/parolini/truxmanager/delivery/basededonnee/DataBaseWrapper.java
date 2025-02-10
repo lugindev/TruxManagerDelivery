@@ -34,15 +34,17 @@ public class DataBaseWrapper extends SQLiteOpenHelper {
     public static final String IMAGE = "IMAGE";
     public static final String IMAGE_ID = "_IMAGE_id";
     public static final String IMAGE_NOM = "_IMAGE_nom";
+    public static final String IMAGE_NUMERO= "_IMAGE_numero";
     //Nom et vesion de la base de donnée
     public static final String DATABASE_NAME = "trux_manager.db";
-    public static final int DATABASE_VERSION = 1;
+    public static final int DATABASE_VERSION = 2;
 
 
 
 
     private static final String CREATION_TABLE_IMAGE = "create table " + IMAGE
             +"("+IMAGE_ID+" integer primary key autoincrement, "
+            + IMAGE_NUMERO+" text , "
             + IMAGE_NOM+"  text );";
 
     //Table MESSAGE

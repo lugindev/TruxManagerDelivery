@@ -1,5 +1,6 @@
 package ch.parolini.truxmanager.delivery;
 
+import ch.parolini.truxmanager.delivery.basededonnee.Requetes;
 import ch.parolini.truxmanager.delivery.model.Order;
 
 /**
@@ -23,4 +24,12 @@ public class VariablesGlobales {
     public static int downloaded = 0;
     public static boolean syncNoUpdate = true;
 
+
+    public static String message ="";
+
+    public static String _noOrder;
+    public static Requetes requeteBd = null;
+    public static Thread _thread = null;
+    public static Envoi _task = null;
+    public static boolean _lockSync = false;
 }

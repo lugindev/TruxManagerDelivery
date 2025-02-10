@@ -20,8 +20,8 @@ public class Requetes {
     private DataBaseWrapper dbHelper;
 
     private SQLiteDatabase database;
-    private  String[] IMAGES_TABLE={DataBaseWrapper.IMAGE_ID,DataBaseWrapper.IMAGE_NOM};
-    private  String[] SELECT_IMAGES={DataBaseWrapper.IMAGE_NOM};
+    private final String[] IMAGES_TABLE={DataBaseWrapper.IMAGE_ID,DataBaseWrapper.IMAGE_NOM,DataBaseWrapper.IMAGE_NUMERO};
+    private final String[] SELECT_IMAGES={DataBaseWrapper.IMAGE_NOM};
 
     public Requetes() {
 
@@ -58,8 +58,8 @@ public class Requetes {
 
     public List<String[]> selectImages() {
         List images = new ArrayList();
-        try {
-            Cursor cursor = database.query(DataBaseWrapper.IMAGE,
+
+            /*Cursor cursor = database.query(DataBaseWrapper.IMAGE,
                     IMAGES_TABLE, null, null, null, null, DataBaseWrapper.IMAGE_ID);
             if (cursor.moveToFirst()) {
                 cursor.moveToFirst();
@@ -67,16 +67,45 @@ public class Requetes {
             while (!cursor.isAfterLast()) {
                 String[] image = getImage(cursor);
                 images.add(image);
-                Log.i("selectImageId",images.get(0).toString());
-                Log.i("selectImageName",images.get(1).toString());
+                //////Log.i("selectImageId",images.get(0).toString());
+                //////Log.i("selectImageName",images.get(1).toString());
                 cursor.moveToNext();
             }
-            cursor.close();
+            cursor.close();*/
+
+        Cursor cursor = database.rawQuery(" SELECT * FROM " + DataBaseWrapper.IMAGE + " Order BY " + DataBaseWrapper.IMAGE_ID , null);
+
+        //int position1 =  countRow ();
+
+        cursor.moveToPosition(-1);
+        while(cursor.moveToNext()){
+            String[] image = getImage(cursor);
+            images.add(image);
         }
-        catch (Exception e){
-            String t=e.getMessage();
-            t="";
+
+        cursor.close();
+
+
+
+        return images;
+    }
+
+    public List<String[]> selectImagesNumero(String numero) {
+        List images = new ArrayList();
+
+        Cursor cursor = database.query(DataBaseWrapper.IMAGE,
+                IMAGES_TABLE, DataBaseWrapper.IMAGE_NUMERO+ " = ?", new String[]{numero}, null, null,null,null);
+        if (cursor.moveToFirst()) {
+            cursor.moveToFirst();
         }
+        while (!cursor.isAfterLast()) {
+            String[] image = getImageByName(cursor);
+            images.add(image);
+            //////Log.i("selectImageId",images.get(0).toString());
+            //////Log.i("selectImageName",images.get(1).toString());
+            cursor.moveToNext();
+        }
+        cursor.close();
 
         return images;
     }
@@ -84,7 +113,7 @@ public class Requetes {
 
     public List<String[]> selectImagesByName(String nom) {
         List images = new ArrayList();
-        try {
+
             Cursor cursor = database.query(DataBaseWrapper.IMAGE,
                     IMAGES_TABLE, DataBaseWrapper.IMAGE_NOM+ " = ?", new String[]{nom}, null, null,null,null);
             if (cursor.moveToFirst()) {
@@ -93,32 +122,29 @@ public class Requetes {
             while (!cursor.isAfterLast()) {
                 String[] image = getImageByName(cursor);
                 images.add(image);
-                Log.i("selectImageId",images.get(0).toString());
-                Log.i("selectImageName",images.get(1).toString());
+                //////Log.i("selectImageId",images.get(0).toString());
+                //////Log.i("selectImageName",images.get(1).toString());
                 cursor.moveToNext();
             }
             cursor.close();
-        }
-        catch (Exception e){
-            String t=e.getMessage();
-            t="";
-        }
+
         return images;
     }
 
 
     private String[] getImage(Cursor cursor) {
-        String image[] = new String[2];
+        String[] image = new String[3];
 
         image[0] = cursor.getString(0);
-        image[1] = cursor.getString(1);
+        image[1] = cursor.getString(2);
+        image[2] = cursor.getString(1);
 
 
         return image;
     }
 
     private String[] getImageByName(Cursor cursor) {
-        String image[] = new String[2];
+        String[] image = new String[2];
 
         image[0] = cursor.getString(0);
         image[1] = cursor.getString(1);
@@ -131,12 +157,14 @@ public class Requetes {
 
 
 
-    public void ajouterImage(String path) {
+    public void ajouterImage(String path , String numero) {
         ContentValues values = new ContentValues();
         values.put(DataBaseWrapper.IMAGE_NOM, path);
+        values.put(DataBaseWrapper.IMAGE_NUMERO, numero);
 
         synchronized(Lock) {
             long id = database.insert(DataBaseWrapper.IMAGE, null, values);
+            //Log.i("id", String.valueOf(id));
         }
         // now that the student is created return it ...
         /*Cursor cursor = database.query(DataBaseWrapper.PESAGE,
@@ -154,17 +182,23 @@ public class Requetes {
 
 
 
-    public void effacerImages(){
+    public void effacerImages(String id){
 
         //database.delete(DataBaseWrapper.MESSAGE,  "MESSAGE = ?", new String[] { id });
-        database.delete(DataBaseWrapper.IMAGE,null,null);
-        //database.execSQL("DELETE FROM " + DataBaseWrapper.MESSAGE + " WHERE " + DataBaseWrapper.MESSAGE_ID  + "= '" + id + "'");
+        database.delete(DataBaseWrapper.IMAGE,DataBaseWrapper.IMAGE_NUMERO+" = ? ", new String[] { id });
+        //database.execSQL("DELETE FROM " + DataBaseWrapper.IMAGE);
 
     }
 
-    public void effacerIamgeById(String id) {
+    public void effacerImages1(){
+        database.execSQL("DELETE FROM " + DataBaseWrapper.IMAGE);
+    }
+
+    public int  effacerIamgeById(String id) {
         synchronized(Lock) {
-            database.execSQL("delete from "+DataBaseWrapper.IMAGE+" where "+DataBaseWrapper.IMAGE_ID+"='"+id+"'");
+            //database.execSQL("delete from "+DataBaseWrapper.IMAGE+" where "+DataBaseWrapper.IMAGE_ID+"='"+id+"'");
+           int i =  database.delete(DataBaseWrapper.IMAGE,  DataBaseWrapper.IMAGE_ID+" = ? ", new String[] { id });
+           return i;
         }
 
     }

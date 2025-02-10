@@ -13,4 +13,6 @@
     <dimen name="image_marge_top_grand">0pt</dimen>
     <dimen name="image_marge_bottom_grand">0pt</dimen>
     <dimen name="image_marge_left_grand">10pt</dimen>
+    <dimen name="text_margin">16dp</dimen>
+    <dimen name="text_margin2">6dp</dimen>
 </resources>

@@ -1,5 +1,7 @@
 package ch.parolini.truxmanager.delivery;
 
+import android.app.Application;
+
 /**
  * Created by salam on 04.03.2019.
  */
@@ -13,7 +15,7 @@ public class AppContext extends Application {
         instance = this;
     }
 
-    public static AppContext getInstance() {
+    public static AppContext getAppContext() {
         return instance;
     }
 }

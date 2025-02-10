@@ -1,4 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_1_7" project-jdk-name="1.8" project-jdk-type="JavaSDK" />
+  <component name="DesignSurface">
+    <option name="filePathToZoomLevelMap">
+      <map>
+        <entry key="..\:/TruxManagerDelivery/app/src/main/res/drawable/image_bg.xml" value="0.1" />
+        <entry key="..\:/TruxManagerDelivery/app/src/main/res/drawable/img_background.xml" value="0.1" />
+        <entry key="..\:/TruxManagerDelivery/app/src/main/res/drawable/list_selector.xml" value="0.1" />
+        <entry key="..\:/TruxManagerDelivery/app/src/main/res/layout/activity_main.xml" value="0.1" />
+        <entry key="..\:/TruxManagerDelivery/app/src/main/res/layout/list_row.xml" value="0.1" />
+        <entry key="..\:/TruxManagerDelivery/app/src/main/res/layout/list_row2.xml" value="0.1" />
+        <entry key="..\:/TruxManagerDelivery/app/src/main/res/menu/list_menu.xml" value="0.5541666666666667" />
+        <entry key="..\:/TruxManagerDelivery/app/src/main/res/menu/main.xml" value="0.5541666666666667" />
+      </map>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_21" default="true" project-jdk-name="jbr-21" project-jdk-type="JavaSDK" />
 </project>

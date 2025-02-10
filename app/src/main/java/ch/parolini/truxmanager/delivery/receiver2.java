@@ -1,5 +1,6 @@
 package ch.parolini.truxmanager.delivery;
 
+import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -28,96 +29,82 @@ public class receiver2 extends BroadcastReceiver {
         //messageSysteme(MainActivity.this, ".S.", "BATTERY_PLUGGED_USB " +usbCharge);
         //messageSysteme(MainActivity.this, ".S.", "BATTERY_PLUGGED_AC " +acCharge);
         //messageSysteme(MainActivity.this, ".S.", "NIVEAU DE CHARGE " +batteryPct);
-        Log.i("forground", intent.getAction());
+        ////Log.i("forground", intent.getAction());
 
         switch (intent.getAction()) {
+
+            case Intent.ACTION_CLOSE_SYSTEM_DIALOGS:
+                //messageSysteme(MainActivity.this, ".S.", "ACTION_SCREEN_OFF");
+                ////Log.i("forground", ".S. ACTION_CLOSE_SYSTEM_DIALOGS Recever");
+
+                break;
+
             case Intent.ACTION_SCREEN_OFF:
                 //messageSysteme(MainActivity.this, ".S.", "ACTION_SCREEN_OFF");
-                Log.i("forground", ".S. ACTION_SCREEN_OFF");
+                ////Log.i("forground", ".S. ACTION_SCREEN_OFF");
 
                 break;
 
             case Intent.ACTION_SCREEN_ON:
                 //messageSysteme(MainActivity.this, ".S.", "ACTION_SCREEN_ON");
-                Log.i("forground", ".S. ACTION_SCREEN_ON");
+                ////Log.i("forground", ".S. ACTION_SCREEN_ON");
 
                 break;
 
             case Intent.ACTION_USER_PRESENT:
                 //messageSysteme(MainActivity.this, ".S.", "ACTION_USER_PRESENT");
-                Log.i("forground", "ACTION_USER_PRESENT");
+                ////Log.i("forground", "ACTION_USER_PRESENT");
 
 
                 break;
 
             case Intent.ACTION_BOOT_COMPLETED:
                 //messageSysteme(MainActivity.this, ".S.", "ACTION_BOOT_COMPLETED");
-                Log.i("forground", ".S. ACTION_BOOT_COMPLETED");
+                ////Log.i("forground", ".S. ACTION_BOOT_COMPLETED");
 
                 break;
 
             case Intent.ACTION_SHUTDOWN:
-                ////messageSysteme(MainActivity.this, ".I.", "ACTION_SHUTDOWN");
-                Log.i("forground", ".S. ACTION_SHUTDOWN2");
-                context.stopService(new Intent(context, ServiceUpload.class));
-                /*final String _date = new SimpleDateFormat("HH:mm", Locale.FRANCE).format(new Date());
-                int result = _date.compareTo("17:30");
-                if(result >= 0) {
-                    Log.i("_date.compareTo", String.valueOf(result));
-                    Log.i("_date.compareTo", _date);
-                    try {
-                        Process proc = Runtime.getRuntime()
-                                .exec(new String[]{"su", "-c", "reboot"});
-                        proc.waitFor();
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
-                }*/
-                /*try {
-                    Process proc = Runtime.getRuntime()
-                            .exec(new String[]{"su", "-c", "reboot"});
-                    proc.waitFor();
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }*/
 
                 break;
 
             case Intent.ACTION_REBOOT:
                 //messageSysteme(MainActivity.this, ".S.", "ACTION_REBOOT");
-                Log.i("forground", ".S. ACTION_REBOOT");
+
+
+                ////Log.i("forground", ".S. ACTION_REBOOT");
 
                 break;
 
             case Intent.ACTION_BATTERY_LOW:
                 //messageSysteme(MainActivity.this, ".S.", "ACTION_BATTERY_LOW");
-                Log.i("forground", ".S. ACTION_BATTERY_LOW");
+                ////Log.i("forground", ".S. ACTION_BATTERY_LOW");
 
                 break;
 
             case Intent.ACTION_BATTERY_OKAY:
                 //messageSysteme(MainActivity.this, ".S.", "ACTION_BATTERY_OKAY");
-                Log.i("forground", ".S. ACTION_USER_PRESENT");
+                ////Log.i("forground", ".S. ACTION_USER_PRESENT");
 
                 break;
 
             case Intent.ACTION_POWER_CONNECTED:
                 //messageSysteme(MainActivity.this, ".S.", "ACTION_POWER_CONNECTED");
-                Log.i("forground", ".S. ACTION_POWER_CONNECTED");
+                ////Log.i("forground", ".S. ACTION_POWER_CONNECTED");
                 //ConfigurationConnection();
 
                 break;
 
             case Intent.ACTION_POWER_DISCONNECTED:
                 //messageSysteme(MainActivity.this, ".S.", "ACTION_POWER_DISCONNECTED");
-                Log.i("forground", ".S. ACTION_POWER_DISCONNECTED");
+                ////Log.i("forground", ".S. ACTION_POWER_DISCONNECTED");
                 //ConfigurationConnection();
 
                 break;
 
             case Intent.ACTION_DATE_CHANGED:
                 //messageSysteme(MainActivity.this, ".S.", "ACTION_POWER_DISCONNECTED");
-                Log.i("forground", ".S. ACTION_DATE_CHANGED");
+                ////Log.i("forground", ".S. ACTION_DATE_CHANGED");
                 //ConfigurationConnection();
 
                 break;

@@ -2,11 +2,13 @@ package ch.parolini.truxmanager.delivery;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.FragmentManager;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
-import android.content.ContentValues;
+import android.net.ConnectivityManager;
+import android.content.ClipData;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -16,11 +18,8 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.graphics.PorterDuff;
-import android.graphics.drawable.ColorDrawable;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -29,15 +28,7 @@ import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
-import android.support.annotation.NonNull;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.app.AppCompatActivity;
+import android.provider.Settings;
 import android.text.Html;
 import android.util.Log;
 import android.view.ContextMenu;
@@ -49,22 +40,26 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.AdapterView;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.support.v7.widget.Toolbar;
 
-import com.google.zxing.integration.android.IntentIntegrator;
-import com.google.zxing.integration.android.IntentResult;
-
-import org.apache.commons.net.ftp.FTPClient;
-
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.RandomAccessFile;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import ch.parolini.truxmanager.delivery.Manager.FileManager;
@@ -75,43 +70,32 @@ import ch.parolini.truxmanager.delivery.gui.ListAdapter;
 import ch.parolini.truxmanager.delivery.model.ClientConfig;
 import ch.parolini.truxmanager.delivery.model.Order;
 
-import android.graphics.BitmapFactory;
-import android.media.ExifInterface;
-import android.util.DisplayMetrics;
 import android.widget.Toast;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 
-import org.apache.commons.net.ftp.FTP;
-import org.apache.commons.net.ftp.FTPFile;
-import org.apache.commons.net.ftp.FTPSClient;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpVersion;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.conn.ClientConnectionManager;
-import org.apache.http.conn.scheme.PlainSocketFactory;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.scheme.SchemeRegistry;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpParams;
-import org.apache.http.params.HttpProtocolParams;
-import org.apache.http.protocol.HTTP;
+import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+import androidx.fragment.app.FragmentTransaction;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.InputStreamReader;
-import java.security.KeyStore;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -125,76 +109,313 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_ACCESS_NETWORK_STATE = 116;
     private static final int PERMISSION_RECEIVE_BOOT_COMPLETED = 117;
     private static final int PERMISSION_CAMERA = 118;
-    public static boolean active;
-    public boolean clearPhoto = false;
-    private FloatingActionButton addButton;
-    private ListView list;
-    // Static to avoid loosing the ref when screen orientation changes
-    static File currentPictureFile = null;
-    SharedPreferences preferences = null;
-    MainActivity thisActivity;
+    private static final int SYSTEM_ALERT_WINDOW = 300;
+    private static final int FOREGROUND_SERVICE = 400;
 
-    private Bitmap mBitmapToSave;
-    private int REQUEST_CODE_CREATOR;
-    private boolean asPicture = false;
-    private boolean onclick = false;
-    private Menu mMenu;
-    private boolean mShowVisible = false;
-    public Snackbar mySnackbar;
-    public Snackbar mySnackbar1;
-    public boolean cleanPhoto = false;
-    private boolean isSelected = false;
-    public Handler handlerClearPhotos;
-    public Handler handlerCleanPhotos;
-    public Runnable runnableClearPhotos;
-    public Runnable runnableCleanPhotos;
-    private String[] paramertes = new String[6];
-    private BroadcastReceiver mMessageReceiver = null;
-    ;
-    private int nbTotalOrdre = 0;
-    private boolean _blockSynchro = false;
-    private boolean snackBarInfo = true;
-    int PICK_IMAGE_MULTIPLE = 1;
-    int PICK_IMAGE_MULTIPLE1 = 2;
-    String imageEncoded;
-    List<String> imagesEncodedList;
+    private static final int REQUEST_OVERLAY_PERMISSIONS = 400;
+    private static final int PERMISSION_MANAGE_EXTERNAL_STORAGE = 122;
+    private static final int REQUEST_IMAGE_CAPTURE = 200;
+    private static final Bitmap original = null;
+    private static final Bitmap resized = null;
+    private static final int SELECT_VIDEO = 1;
+    private static final int serverResponseCode = 0;
+    private static final String _urlJsonParamerte = "https://www.luginbuhl.ch/X3GR5T/Hv8bcFH9.json";
+    private static final String TAG = "VideoPickerActivity";
+    private static final int SELECT_VIDEOS = 1;
+    private static final int SELECT_VIDEOS_KITKAT = 10;
+    public static boolean active;
     public static String serverRootContextURL;
     public static String serverUserName;
-    private static String serverPassword;
     public static boolean passwordOK = false;
+    // Static to avoid loosing the ref when screen orientation changes
+    static File currentPictureFile = null;
+    private static String serverPassword;
     private static InputStream inputStream;
-    private static String ftpHostName = "";
-    private static String ftpUserName;
-    private static String ftpPassword;
     private static MainActivity _activity;
-    private static Bitmap original = null;
-    private static Bitmap resized = null;
     private static String _path;
     private static boolean _rename;
     private static boolean efface;
     private static boolean inFTP;
-    private static FTPClient con = null;
     private static String dateExif;
-
-
+    private final boolean asPicture = false;
+    private final String[] paramertes = new String[6];
+    private final BroadcastReceiver mMessageReceiver = null;
+    private final int nbTotalOrdre = 0;
+    private final boolean _blockSynchro = false;
+    private final String Tag = "TransfertPhp";
+    private final ArrayList<String[]> _listImages = new ArrayList<>();
+    private final boolean userPrenste = false;
+    private final int CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE1 = 10;
+    private final int CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE2 = 11;
+    private final BroadcastReceiver mConfigReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            ClientConfig clientConfig = (ClientConfig) intent.getSerializableExtra("message");
+            //Log.d("receiver", "Got message: " + clientConfig);
+            OrderManager.setMaxAgeMinutes(clientConfig.MAX_WEIGHING_AGE_BEFORE_UPLOAD_MINUTES);
+        }
+    };
+    private final BroadcastReceiver mMessageToast = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Get extra data included in the Intentg
+            String message = (String) intent.getSerializableExtra("message");
+            //Log.d("receiver", "Got message: " + message);
+            ////Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+            showMessage(message);
+        }
+    };
+    public boolean clearPhoto = false;
+    public Snackbar mySnackbar;
+    public Snackbar mySnackbar1;
+    public boolean cleanPhoto = false;
+    public Handler handlerClearPhotos;
+    public Handler handlerCleanPhotos;
+    public Runnable runnableClearPhotos;
+    public Runnable runnableCleanPhotos;
+    public TextView _textViewinfo;
+    SharedPreferences preferences = null;
+    MainActivity thisActivity;
+    /**
+     * Apres chaque envoi d'ordre vers le serveur
+     */
+    private final BroadcastReceiver mOrderSentReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Order order = (Order) intent.getSerializableExtra("order");
+            //Log.d("receiver", "Got message: " + order);
+            updateOrderListView(); // utile
+        }
+    };
+    BroadcastReceiver _receiverEtatDuTelephone = new BootLoadReceiver();
+    int PICK_IMAGE_MULTIPLE = 1;
+    int PICK_IMAGE_MULTIPLE1 = 2;
+    String imageEncoded;
+    List<String> imagesEncodedList;
     String imagePath;
-
-    private static int serverResponseCode = 0;
     ProgressDialog dialog = null;
-
     String upLoadServerUri = null;
-    private static String _urlJsonParamerte = "https://www.dsgsoft.ch/X3GR5T/Hv8bcFH9.json";
-    ;
-    private String Tag = "TransfertPhp";
-    private ArrayList<String[]> _listImages = new ArrayList<>();
-    private Requetes requetesBaseDeDonneeInterne;
-    private Bitmap scaledBitmap;
-    private Thread one;
     Uri imageUri;
+    ActivityResultLauncher<String> result = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            new ActivityResultCallback<Uri>() {
+                @Override
+                public void onActivityResult(Uri result) {
+                    //DO whatever with received image content scheme Uri
+                    createFile(result);
+                }
+            });
+    String currentPhotoPath;
+    private FloatingActionButton addButton;
+    private FloatingActionButton addBon;
+    private ListView list;
+    private Bitmap mBitmapToSave;
+    private int REQUEST_CODE_CREATOR;
+    private boolean onclick = false;
+    private Menu mMenu;
+    private boolean mShowVisible = false;
+    private boolean isSelected = false;
+    private boolean snackBarInfo = true;
+    private String selectedVideoPath;
+    private Bitmap scaledBitmap;
+
     private File imageFile;
+    private boolean powerPressed = false;
 
     //private HttpClient client;
+    private List<String> selectedVideos;
+    private boolean video = false;
+    private Intent _intent = null;
+    private boolean _repete = false;
+    private ActivityResultLauncher<PickVisualMediaRequest> pickMultipleMedia;
+    private BroadcastReceiver broadcastReceiverEtatDuReseau;
+    private ImageButton whatsapp;
 
+    /**
+     * Get a file path from a Uri. This will get the the path for Storage Access
+     * Framework Documents, as well as the _data field for the MediaStore and
+     * other file-based ContentProviders.
+     *
+     * @param context The context.
+     * @param uri     The Uri to query.
+     * @author paulburke
+     */
+    @SuppressLint("NewApi")
+    public static String getPath(final Context context, final Uri uri) {
+
+        final boolean isKitKat = Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT;
+
+        // DocumentProvider
+        if (isKitKat && DocumentsContract.isDocumentUri(context, uri)) {
+            // ExternalStorageProvider
+            if (isExternalStorageDocument(uri)) {
+                final String docId = DocumentsContract.getDocumentId(uri);
+                final String[] split = docId.split(":");
+                final String type = split[0];
+
+                if ("primary".equalsIgnoreCase(type)) {
+                    return Environment.getExternalStorageDirectory() + "/" + split[1];
+                }
+
+                // TODO handle non-primary volumes
+            }
+            // DownloadsProvider
+            else if (isDownloadsDocument(uri)) {
+
+                final String id = DocumentsContract.getDocumentId(uri);
+                final Uri contentUri = ContentUris.withAppendedId(
+                        Uri.parse("content://downloads/public_downloads"), Long.valueOf(id));
+
+                return getDataColumn(context, contentUri, null, null);
+            }
+            // MediaProvider
+            else if (isMediaDocument(uri)) {
+                final String docId = DocumentsContract.getDocumentId(uri);
+                final String[] split = docId.split(":");
+                final String type = split[0];
+
+                Uri contentUri = null;
+                if ("image".equals(type)) {
+                    contentUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                } else if ("video".equals(type)) {
+                    contentUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
+                } else if ("audio".equals(type)) {
+                    //contentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+                }
+
+                final String selection = "_id=?";
+                final String[] selectionArgs = new String[]{
+                        split[1]
+                };
+
+                return getDataColumn(context, contentUri, selection, selectionArgs);
+            }
+        }
+        // MediaStore (and general)
+        else if ("content".equalsIgnoreCase(uri.getScheme())) {
+
+            // Return the remote address
+            if (isGooglePhotosUri(uri))
+                return uri.getLastPathSegment();
+
+            return getDataColumn(context, uri, null, null);
+        }
+        // File
+        else if ("file".equalsIgnoreCase(uri.getScheme())) {
+            return uri.getPath();
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the value of the data column for this Uri. This is useful for
+     * MediaStore Uris, and other file-based ContentProviders.
+     *
+     * @param context       The context.
+     * @param uri           The Uri to query.
+     * @param selection     (Optional) Filter used in the query.
+     * @param selectionArgs (Optional) Selection arguments used in the query.
+     * @return The value of the _data column, which is typically a file path.
+     */
+    public static String getDataColumn(Context context, Uri uri, String selection,
+                                       String[] selectionArgs) {
+
+        Cursor cursor = null;
+        final String column = "_data";
+        final String[] projection = {
+                column
+        };
+
+        try {
+            cursor = context.getContentResolver().query(uri, projection, selection, selectionArgs,
+                    null);
+            if (cursor != null && cursor.moveToFirst()) {
+                final int index = cursor.getColumnIndexOrThrow(column);
+                return cursor.getString(index);
+            }
+        } finally {
+            if (cursor != null)
+                cursor.close();
+        }
+        return null;
+    }
+
+    /**
+     * @param uri The Uri to check.
+     * @return Whether the Uri authority is ExternalStorageProvider.
+     */
+    public static boolean isExternalStorageDocument(Uri uri) {
+        return "com.android.externalstorage.documents".equals(uri.getAuthority());
+    }
+
+    /**
+     * @param uri The Uri to check.
+     * @return Whether the Uri authority is DownloadsProvider.
+     */
+    public static boolean isDownloadsDocument(Uri uri) {
+        return "com.android.providers.downloads.documents".equals(uri.getAuthority());
+    }
+
+    /**
+     * @param uri The Uri to check.
+     * @return Whether the Uri authority is MediaProvider.
+     */
+    public static boolean isMediaDocument(Uri uri) {
+        return "com.android.providers.media.documents".equals(uri.getAuthority());
+    }
+
+    /**
+     * @param uri The Uri to check.
+     * @return Whether the Uri authority is Google Photos.
+     */
+    public static boolean isGooglePhotosUri(Uri uri) {
+        return "com.google.android.apps.medias.content".equals(uri.getAuthority());
+    }
+
+    public static void copyFile(String inputPath, String outputPath) {
+
+        InputStream in = null;
+        OutputStream out = null;
+        try {
+            in = new FileInputStream(inputPath);
+            out = new FileOutputStream(outputPath);
+
+            byte[] buffer = new byte[1024];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            in.close();
+            in = null;
+
+            // write the output file (You have now copied the file)
+            out.flush();
+            out.close();
+            out = null;
+
+            //Log.i("copy", "Copied file to " + outputPath);
+
+        } catch (FileNotFoundException fnfe1) {
+            //Log.i("copy", fnfe1.getMessage());
+        } catch (Exception e) {
+            //Log.i("copy", e.getMessage());
+        }
+    }
+
+    public static File getImageFolder() {
+        File imageFolder = null;
+        if (imageFolder == null) {
+            File folder = new File(AppContext.getAppContext().getFilesDir(), "/truxmanager");
+            imageFolder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES) + "/");
+            if (!imageFolder.exists()) {
+                if (!imageFolder.mkdirs()) {
+                    //Log.e("TRUX", "Directory (" + imageFolder + ") dosen't exist and could not be created");
+                }
+            }
+        }
+        return imageFolder;
+    }
 
     @Override
     protected void onDestroy() {
@@ -208,14 +429,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
-        MainActivity.this.setTitle(Html.fromHtml("Liste des bons"));
-        boolean hasPermission = (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED);
-        if (!hasPermission) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                    REQUEST_WRITE_STORAGE);
+        int LAYOUT_FLAG;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+        } else {
         }
 
         boolean hasPermission1 = (ContextCompat.checkSelfPermission(this,
@@ -274,66 +491,40 @@ public class MainActivity extends AppCompatActivity {
                     new String[]{Manifest.permission.CAMERA},
                     PERMISSION_CAMERA);
         }
-
-        if (lectureDesParametres("action_default").equals("")) {
-            paramertes[1] = "photo_gallerie";
-            sauvegardeDesParametres(paramertes);
+        boolean hasPermission8 = (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.SYSTEM_ALERT_WINDOW) == PackageManager.PERMISSION_GRANTED);
+        if (!hasPermission8) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.SYSTEM_ALERT_WINDOW},
+                    SYSTEM_ALERT_WINDOW);
         }
 
-
-        if (lectureDesParametres("action_color").equals("")) {
-            paramertes[2] = "color";
-            sauvegardeDesParametres(paramertes);
+        boolean hasPermission9 = (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.FOREGROUND_SERVICE) == PackageManager.PERMISSION_GRANTED);
+        if (!hasPermission9) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.FOREGROUND_SERVICE},
+                    FOREGROUND_SERVICE);
         }
 
+        if (!Settings.canDrawOverlays(MainActivity.this)) {
+            Intent myIntent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+            Uri uri = Uri.fromParts("package", getPackageName(), null);
 
-        if (lectureDesParametres("action_fichier").equals("")) {
-            paramertes[3] = "effacer";
-            sauvegardeDesParametres(paramertes);
-        }
-
-
-        if (lectureDesParametres("action_taille").equals("")) {
-            paramertes[4] = "grande";
-            sauvegardeDesParametres(paramertes);
-
-        }
-
-        if (lectureDesParametres("action_theme").equals("")) {
-            paramertes[5] = "color";
-            sauvegardeDesParametres(paramertes);
+            myIntent.setData(uri);
+            startActivityForResult(myIntent, REQUEST_OVERLAY_PERMISSIONS);
+            //return;
+        }else{
+            if(VariablesGlobales._isOnBoot == true){
+                moveTaskToBack(true);
+            }
 
         }
-
-        if (lectureDesParametres("qualite_photos").equals("")) {
-            paramertes[0] = "95";
-            sauvegardeDesParametres(paramertes);
-        }
-
-
-        try {
-            PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
-            String version = pInfo.versionName;
-            VariablesGlobales._versionName = pInfo.versionName;
-            VariablesGlobales._versionCode = String.valueOf(pInfo.versionCode);
-        } catch (PackageManager.NameNotFoundException e) {
-        }
-
-
         StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
         StrictMode.setVmPolicy(builder.build());
-        thisActivity = this;
 
-        if (isMyServiceRunning(ServiceUpload.class) == false && lectureDesParametresOrdres("nb_photos") != 0) {
-            /*startService(new Intent(getBaseContext(), SerciceRedemarrage.class));
-        } else {
-            stopService(new Intent(getBaseContext(), SerciceRedemarrage.class));
-        }*/
-            startService(new Intent(getBaseContext(), ServiceUpload.class));
 
-        }
-
-        if (VariablesGlobales._isOnBoot == true && lectureDesParametresOrdres("nb_photos") == 0) {
+        if (VariablesGlobales._isOnBoot && lectureDesParametresOrdres("nb_photos") == 0) {
             VariablesGlobales._isOnBoot = false;
             if (android.os.Build.VERSION.SDK_INT >= 21) {
                 finishAndRemoveTask();
@@ -341,25 +532,23 @@ public class MainActivity extends AppCompatActivity {
                 finish();
             }
         } else {
-            if (isMyServiceRunning(ServiceUpload.class) == false) {
-                startService(new Intent(getBaseContext(), ServiceUpload.class));
-            }
-            /*if (android.os.Build.VERSION.SDK_INT >= 21) {
-                finishAndRemoveTask();
-            } else {
-                finish();
-            }*/
-            if (isSelected == true) {
+            if (isSelected) {
                 setMenu();
             }
-            if (VariablesGlobales.networkInfos == true) {
-
-                /*if(ServerCommService.getExistingInstance(MainActivity.this)!=null) {
-                    ServerCommService.getExistingInstance(MainActivity.this).forceSynchroNow();
-                }*/
-            }
         }
+        new Context1(MainActivity.this);
+        new AcitiviteContext(this);
 
+        PackageInfo pInfo = null;
+        try {
+            pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+        } catch (PackageManager.NameNotFoundException e) {
+            //throw new RuntimeException(e);
+        }
+        VariablesGlobales._versionName = pInfo.versionName;
+        VariablesGlobales._versionCode = String.valueOf(pInfo.versionCode);
+
+        thisActivity = MainActivity.this;
         OrderManager.readFromLocalStorage(this.getApplicationContext());
         RpcManager.serverRootContextURL = getResources().getString(R.string.SERVER_ROOT_URL);
         RpcManager.serverUserName = getResources().getString(R.string.SERVER_ROOT_USER);
@@ -371,39 +560,24 @@ public class MainActivity extends AppCompatActivity {
         // Will be overrriden by client settings
         OrderManager.setMaxAgeMinutes(getResources().getInteger(R.integer.MAX_WEIGHING_AGE_BEFORE_UPLOAD_MINUTES));
 
-        try {
-
-
-            File file = getImageFolder();
-            Log.d("Files", "Path: " + file.getPath());
-            File directory = new File(file.getPath());
-            File[] files = directory.listFiles();
-            Log.d("Files", "Size: " + files.length);
-            for (int i = 0; i < files.length; i++) {
-                requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
-                requetesBaseDeDonneeInterne.open();
-                if (requetesBaseDeDonneeInterne.selectImagesByName(files[i].getPath()).size() == 0) {
-                    requetesBaseDeDonneeInterne.ajouterImage(files[i].getPath());
-                    OrderManager.currentOrder.addNewPicture(currentPictureFile);
-                    //files[i].delete();
-                    Log.d("Files", "FileName:" + files[i].getPath());
-                }
-            }
-        } catch (Exception e) {
-
-        }
 
         setContentView(R.layout.activity_main);
-        list = (ListView) findViewById(R.id.list);
+
+        FrameLayout mRootView = findViewById(R.id.frame_content);
+
+        mySnackbar = Snackbar.make(mRootView, R.id.mycoordinatorlayout, 10000);
+
+        list = findViewById(R.id.list);
         list.setLongClickable(true);
         list.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
         list.setItemsCanFocus(false);
 
-        TextView emptyText = (TextView) findViewById(R.id.empty);
+        TextView emptyText = findViewById(R.id.empty);
         list.setEmptyView(emptyText);
+        _textViewinfo = findViewById(R.id.info);
 
+        addButton = findViewById(R.id.addButton);
 
-        addButton = (FloatingActionButton) findViewById(R.id.addButton);
 
         addButton.setOnClickListener(new View.OnClickListener() {
 
@@ -411,48 +585,119 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 //Toast.makeText(thisActivity, "Nouveau bon de commande. Positionnez le code bar dans le rectangle pour le scanner ", Toast.LENGTH_LONG).show();
                 isSelected = true;
+                try {
+                    VariablesGlobales._thread.join();
+                } catch (Exception e) {
+                }
+                VariablesGlobales._thread = null;
+                try {
+                    VariablesGlobales._task.cancel(true);
+                }catch (Exception e){
+                }
+                VariablesGlobales._task = null;
                 showBarCodeReader();
+                //showGallery(OrderManager.currentOrder);
+            }
+        });
+
+        addBon = findViewById(R.id.addBon);
+
+        addBon.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //Toast.makeText(thisActivity, "Nouveau bon de commande. Positionnez le code bar dans le rectangle pour le scanner ", Toast.LENGTH_LONG).show();
+                isSelected = false;
+                setMenu();
+                FragmentBon fragment = new FragmentBon(MainActivity.this);
+                FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+                ft.add(R.id.frame_content, fragment).addToBackStack(null);
+                ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
+                ft.addToBackStack(null);
+                ft.commit();
+
             }
         });
 
         addButton.setColorFilter(Color.WHITE);
+        addBon.setColorFilter(Color.WHITE);
+
 
 
         //registerForContextMenu(list);
 
-        ContoleEtatDuReseau();
-        choixDuTheme();
+        VariablesGlobales.requeteBd = new Requetes(AppContext.getAppContext());
+        VariablesGlobales.requeteBd.open();
+        //startService(new Intent(getBaseContext(), SerciceRedemarrage.class));
+
         // Click event for single list row
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, final View view,
                                     int position, long id) {
                 isSelected = true;
+                VariablesGlobales.message = "";
                 setMenu();
-                switch (lectureDesParametres("action_default")) {
-                    case "":
-                        break;
-                    case "photo_gallerie":
-                        break;
-                    case "photo":
-                        OrderManager.currentOrder = (Order) parent.getItemAtPosition(position);
-                        VariablesGlobales.currentOrder = (Order) parent.getItemAtPosition(position);
-                        showCamera(OrderManager.currentOrder);
-                        break;
-                    case "gallerie":
-                        OrderManager.currentOrder = (Order) parent.getItemAtPosition(position);
-                        VariablesGlobales.currentOrder = (Order) parent.getItemAtPosition(position);
-                        showGallery(OrderManager.currentOrder);
-                        break;
+
+                if (_intent != null) {
+                    String myString = _intent.getStringExtra("message");
+                    if (myString != null) {
+                        String[] tab = myString.split(";");
+
+                        VariablesGlobales.message = tab[1];
+
+                        //Log.i("message", myString);
+                        //Log.i("message", tab[0]);
+                        //Log.i("message", tab[1]);
+
+                    }
                 }
+
                 OrderManager.currentOrder = (Order) parent.getItemAtPosition(position);
-                VariablesGlobales.currentOrder = (Order) parent.getItemAtPosition(position);
-                setTitle(Html.fromHtml("N°: " + OrderManager.currentOrder.getOrderNumber()));
+                OrderManager.currentOrder = (Order) parent.getItemAtPosition(position);
+
+                try {
+                    VariablesGlobales._thread.join();
+                } catch (Exception e) {
+                }
+                VariablesGlobales._thread = null;
+                try {
+                    VariablesGlobales._task.cancel(true);
+                }catch (Exception e){
+                }
+                VariablesGlobales._task = null;
+                ////setTitle();
+                String message = VariablesGlobales.message.replace("_", "");
+                if (message.equals("")) {
+                    _textViewinfo.setText("N°: " + OrderManager.currentOrder.getOrderNumber());
+                } else {
+                    _textViewinfo.setText("N°: " + OrderManager.currentOrder.getOrderNumber() + " - " + message);
+                }
                 mySnackbar = Snackbar.make(view, R.id.mycoordinatorlayout, 10000);
+            }
+        });
 
-
-                //OrderManager.currentOrder = (Order) parent.getItemAtPosition(position);
-                //showCamera(OrderManager.currentOrder);
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                // Back is pressed... Finishing the activity
+                _repete = false;
+                powerPressed = false;
+                updateOrderListView();
+                if (getSupportFragmentManager().getBackStackEntryCount() == 1) {
+                    setTitle(Html.fromHtml("TM"));
+                    getSupportFragmentManager().popBackStack();
+                } else {
+                    if (!mMenu.findItem(R.id.action_supprimerbon).isVisible()) {
+                        moveTaskToBack(true);
+                    }
+                    if (!mMenu.findItem(R.id.menu_reload).isVisible()) {
+                        moveTaskToBack(true);
+                    }
+                }
+                if (mMenu.findItem(R.id.action_supprimerbon).isVisible()) {
+                    mMenu.findItem(R.id.action_supprimerbon).setVisible(false);
+                    mMenu.findItem(R.id.action_supprimer_photos).setVisible(false);
+                }
             }
         });
 
@@ -463,28 +708,23 @@ public class MainActivity extends AppCompatActivity {
                 mySnackbar = Snackbar.make(view, R.id.mycoordinatorlayout, 10000);
                 OrderManager.currentOrder = (Order) parent.getItemAtPosition(position);
                 OrderManager.currentOrder.hasPictureFiles();
-                VariablesGlobales.currentOrder = (Order) parent.getItemAtPosition(position);
+                OrderManager.currentOrder = (Order) parent.getItemAtPosition(position);
                 onclick = false;
                 mMenu.findItem(R.id.action_supprimer_photos).setVisible(true);
                 mMenu.findItem(R.id.action_supprimerbon).setVisible(true);
                 mMenu.findItem(R.id.action_gallery).setVisible(false);
-                mMenu.findItem(R.id.action_gallery_mult).setVisible(false);
+                mMenu.findItem(R.id.action_video_mult).setVisible(false);
+                mMenu.findItem(R.id.action_video_simple).setVisible(false);
                 mMenu.findItem(R.id.action_photo).setVisible(false);
-                setTitle(Html.fromHtml("N°: " + OrderManager.currentOrder.getOrderNumber()));
+                //mMenu.findItem(R.id.whatsapp).setVisible(false);
+                //setTitle(Html.fromHtml("N°: " + OrderManager.currentOrder.getOrderNumber().toString(); + " - " + VariablesGlobales.message));
                 return true;
             }
         });
 
-
+        setTitle(Html.fromHtml("TM"));
         // We start the backgroud service
-        Intent intent = new Intent(this, ServerCommService.class);
-        startService(intent);
 
-        // Register to receive messages.
-        // We are registering an observer (mWeighingReceiver) to receive Intents
-        // with actions named "custom-event-name".
-//        LocalBroadcastManager.getInstance(this).registerReceiver(mWeighingReceiver,
-//                new IntentFilter("onWeightingLoaded"));
 
 
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageToast,
@@ -492,132 +732,106 @@ public class MainActivity extends AppCompatActivity {
 
         LocalBroadcastManager.getInstance(this).registerReceiver(mConfigReceiver,
                 new IntentFilter("onConfigReceived"));
-
-
         IntentFilter filter1 = new IntentFilter();
         filter1.addAction("android.net.conn.CONNECTIVITY_ACTION");
         filter1.addAction("android.net.conn.CONNECTIVITY_CHANGE");
-
-
         broadcastReceiverEtatDuReseau = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 ContoleEtatDuReseau();
-
-
             }
 
         };
+        this.registerReceiver(broadcastReceiverEtatDuReseau, filter1);
 
-        try {
-            this.registerReceiver(broadcastReceiverEtatDuReseau, filter1);
-        } catch (Exception e) {
-
-        }
 
         LocalBroadcastManager.getInstance(this).registerReceiver(mOrderSentReceiver,
                 new IntentFilter("onOrderSent"));
 
+        _intent = getIntent();
+        String myString = getIntent().getStringExtra("message");
+        if (myString != null) {
+            String[] tab = myString.split(";");
 
-        mMessageReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                /*if (VariablesGlobales._notSendOrders == true) {
-                    if (isMyServiceRunning(ServiceUpload.class) == false) {
-                        //startService(new Intent(getBaseContext(), SerciceRedemarrage.class));
-                        startService(new Intent(getBaseContext(), ServiceUpload.class));
-                    }
-
-                    View view1 = getWindow().getDecorView().getRootView();
-                    if (snackBarInfo == true) {
-                        mySnackbar1 = Snackbar.make(view1, R.id.mycoordinatorlayout, 30000);
-                        mySnackbar1.setText("Si il reste des photos à télécharger merci de ne pas fermer l'application.");
-                        mySnackbar1.setAction(R.string.ok, new MyUndoListener2(MainActivity.this));
-                        mySnackbar1.setActionTextColor(Color.parseColor("#ffffff"));
-                        mySnackbar1.show();
-                    }
-                } else {
-                    if (isMyServiceRunning(ServiceUpload.class) == true) {
-                        stopService(new Intent(getBaseContext(), ServiceUpload.class));
-                    }
-
-                    //finish();
-                }*/
+            VariablesGlobales.message = tab[1];
+            //Log.i("message", myString);
+            //Log.i("message", tab[0]);
+            //Log.i("message", tab[1]);
+            boolean orderExiste = false;
+            for (Order order : OrderManager.getOrders()) {
+                //Log.i("message", String.valueOf(OrderManager.getOrders()));
+                if (tab[0].equals(order.getOrderNumber())) {
+                    orderExiste = true;
+                    //Log.i("message", "orderExiste" + tab[0]);
+                    OrderManager.currentOrder = order;
+                    break;
+                }
             }
-        };
+            if (!orderExiste) {
+                OrderManager.currentOrder = OrderManager.createAndSetCurrent(tab[0]);
+            }
+
+            if (!video) {
+                try {
+                    VariablesGlobales.syncNoUpdate = true;
+                    try {
+                        showCamera2(OrderManager.currentOrder, ".jpg");
+                    } catch (ParseException e) {
+                        //e.printStackTrace();
+                    }
+                } catch (RuntimeException e) {
+
+                }
+            } else {
+                try {
+                    VariablesGlobales.syncNoUpdate = true;
+                    try {
+                        showCamera3(OrderManager.currentOrder, ".mp4");
+                    } catch (ParseException e) {
+                        //e.printStackTrace();
+                    }
+                } catch (RuntimeException e) {
+
+                }
+
+            }
+
+        } else {
+            //Log.i("message", "null");
+        }
+
+        pickMultipleMedia = registerForActivityResult(
+                new ActivityResultContracts.PickMultipleVisualMedia(100), gfgPhotoPicker -> {
+                    if (!gfgPhotoPicker.isEmpty()) {
+                        //Log.d("PhotoPicker",
+                                //"Number of items selected: "
+                                        //+ gfgPhotoPicker.size());
+                    } else {
+                        //Log.d("Opened Picker",
+                                //"Choose something Geek");
+                    }
+                });
+        updateOrderListView();
 
     }
-
-    /**
-     * Apres chaque envoi d'ordre vers le serveur
-     */
-    private BroadcastReceiver mOrderSentReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            Order order = (Order) intent.getSerializableExtra("order");
-            Log.d("receiver", "Got message: " + order);
-            updateOrderListView();
-        }
-    };
-
-
-    private BroadcastReceiver mConfigReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            ClientConfig clientConfig = (ClientConfig) intent.getSerializableExtra("message");
-            Log.d("receiver", "Got message: " + clientConfig);
-            OrderManager.setMaxAgeMinutes(clientConfig.MAX_WEIGHING_AGE_BEFORE_UPLOAD_MINUTES);
-        }
-    };
-
-
-    private BroadcastReceiver broadcastReceiverEtatDuReseau = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            ContoleEtatDuReseau();
-        }
-
-    };
-
-
-
-
-    private BroadcastReceiver mMessageToast = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            // Get extra data included in the Intentg
-            String message = (String) intent.getSerializableExtra("message");
-            Log.d("receiver", "Got message: " + message);
-            ////Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
-            showMessage(message);
-        }
-    };
-
-
-
 
     public void updateOrderListView() {
-        ListView list = (ListView) findViewById(R.id.list);
-
-        // avoid loosing scroll
-        //http://vikinghammer.com/2011/06/17/android-listview-maintain-your-scroll-position-when-you-refresh/
-        // if (OrderManager.hasOrder()) {
-        if (list.getAdapter() == null) {
-            list.setAdapter(new ListAdapter(thisActivity, OrderManager.getOrders()));
-        } else {
-            ((ListAdapter) list.getAdapter()).refill(OrderManager.getOrders());
-        }
-        //}
+                ListView list = findViewById(R.id.list);
+                if (list.getAdapter() == null) {
+                    list.setAdapter(new ListAdapter(thisActivity, OrderManager.getOrders()));
+                } else {
+                    ((ListAdapter) list.getAdapter()).refill(OrderManager.getOrders());
+                }
     }
-
 
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
         if (v.getId() == R.id.list) {
-            if (onclick == true) {
+            if (onclick) {
                 MenuInflater inflater = getMenuInflater();
                 inflater.inflate(R.menu.menu_click, menu);
+
 
             } else {
                 if (OrderManager.currentOrder.hasPictureFiles()) {
@@ -640,50 +854,78 @@ public class MainActivity extends AppCompatActivity {
         switch (item.getItemId()) {
             case R.id.supprimer_photos:
 
-
                 mShowVisible = false; // or false
                 invalidateOptionsMenu();
                 ordre.cleanImageFilesOnPhone(ordre);
-                ////Toast.makeText(thisActivity, "Toutes les photos du bon: " + ordre.getOrderNumber() + " effacées.", Toast.LENGTH_LONG).show();
-                updateOrderListView();
+                ////Toast.makeText(thisActivity, "Toutes les medias du bon: " + ordre.getOrderNumber() + " effacées.", Toast.LENGTH_LONG).show();
 
 
                 // add stuff here
                 return true;
             case R.id.supprimer_ordre:
                 mShowVisible = false; // or false
+
                 invalidateOptionsMenu();
                 OrderManager.removeCurrentOrder();
                 ////Toast.makeText(thisActivity, "Bon de commande " + ordre.getOrderNumber() + " supprimé", Toast.LENGTH_LONG).show();
-                updateOrderListView();
+
 
                 // edit stuff here
                 return true;
 
             case R.id.action_gallery:
+                video = false;
                 showGallery(OrderManager.currentOrder);
 
                 // add stuff here
                 return true;
 
-            case R.id.action_gallery_mult:
+            case R.id.action_video_mult:
+                video = true;
                 showGallery1(OrderManager.currentOrder);
 
                 // add stuff here
                 return true;
             case R.id.action_image:
+                video = false;
                 VariablesGlobales.syncNoUpdate = true;
-                showCamera(OrderManager.currentOrder);
+                try {
+                    showCamera2(OrderManager.currentOrder, ".jpg");
+                } catch (ParseException e) {
+                    //e.printStackTrace();
+                }
 
                 // edit stuff here
                 return true;
+
+            case R.id.action_video_simple:
+                video = true;
+                VariablesGlobales.syncNoUpdate = true;
+                try {
+                    showCamera3(OrderManager.currentOrder, ".mp4");
+                } catch (ParseException e) {
+                    //e.printStackTrace();
+                }
+
+                // edit stuff here
+                return true;
+
+            /*case R.id.whatsapp:
+                // Choose a directory using the system's file picker.
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                // Optionally, specify a URI for the directory that should be opened in
+                // the system file picker when it loads.
+
+                Uri wa_status_uri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3AAndroid%2Fmedia/document/primary%3AAndroid%2Fmedia%2Fcom.whatsapp%2FWhatsApp%2FMedia%2F.Statuses");
+                intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, wa_status_uri);
+                startActivityForResult(intent, 10001);
+                return true;*/
 
             default:
                 return super.onContextItemSelected(item);
 
         }
     }
-
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
@@ -694,18 +936,14 @@ public class MainActivity extends AppCompatActivity {
         return super.onPrepareOptionsMenu(menu);
     }
 
-
     @Override
     protected void onResume() {
-        Log.i("TRUX", "Resume called");
 
         super.onResume();
+        //Log.i("TRUX", "Resume called");
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver, new IntentFilter("EVENT_SNACKBAR"));
 
     }
-
-
-
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
@@ -717,18 +955,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         OrderManager.readFromLocalStorage(this.getApplicationContext());
-        /*if(VariablesGlobales._blockSendOrders == false) {
-            VariablesGlobales._blockSendOrders = true;
-            ServerCommService.getExistingInstance().forceSynchroNow();
-        }*/
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        choixDuTheme();
-        //updateOrderListView();
-        if (isSelected == true) {
+        if (isSelected) {
             setMenu();
         }
     }
@@ -743,42 +975,88 @@ public class MainActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         active = false;
-        choixDuTheme();
-        //updateOrderListView();
-        if (isSelected == true) {
+        if (isSelected) {
             setMenu();
         }
-        if (VariablesGlobales.networkInfos == true) {
-
-            if (ServerCommService.getExistingInstance(MainActivity.this) != null) {
-                //ServerCommService.getExistingInstance(MainActivity.this).forceSynchroNow();
-            }
-        }
-        //unregisterReceiver(broadcastReceiverEtatDuReseau);
     }
 
     @Override
     public void onBackPressed() {
+        _repete = false;
+        powerPressed = false;
+        setTitle(Html.fromHtml("TM"));
+        if (getSupportFragmentManager().getBackStackEntryCount() > 1) {
+            getSupportFragmentManager().popBackStack();
+            return;
+        }
 
+        FragmentManager manager = getFragmentManager();
+        int count = manager.getBackStackEntryCount();
 
+        if (count == 0) {
+            super.onBackPressed();
+        } else {
+            manager.popBackStack();
+        }
+
+        if (!mMenu.findItem(R.id.action_supprimerbon).isVisible()) {
+            super.onBackPressed();
+        }
+
+        if (mMenu.findItem(R.id.action_supprimerbon).isVisible()) {
+            mMenu.findItem(R.id.action_supprimerbon).setVisible(false);
+            mMenu.findItem(R.id.action_supprimer_photos).setVisible(false);
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    void updateBackInvokedCallbackState() {
+        _repete = false;
+        powerPressed = false;
 
         if (getSupportFragmentManager().getBackStackEntryCount() > 1) {
             getSupportFragmentManager().popBackStack();
             return;
         }
 
-        if (mMenu.findItem(R.id.action_supprimerbon).isVisible() == false) {
+        if (!mMenu.findItem(R.id.action_supprimerbon).isVisible()) {
             super.onBackPressed();
         }
 
-        if (mMenu.findItem(R.id.action_supprimerbon).isVisible() == true) {
+        if (mMenu.findItem(R.id.action_supprimerbon).isVisible()) {
             mMenu.findItem(R.id.action_supprimerbon).setVisible(false);
             mMenu.findItem(R.id.action_supprimer_photos).setVisible(false);
         }
-
-
     }
 
+    @NonNull
+    @Override
+    public OnBackInvokedDispatcher getOnBackInvokedDispatcher() {
+
+
+        return super.getOnBackInvokedDispatcher();
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    public void setOnBackInvokedDispatcher(@NonNull OnBackInvokedDispatcher invoker) {
+        _repete = false;
+        powerPressed = false;
+
+        if (getSupportFragmentManager().getBackStackEntryCount() > 1) {
+            getSupportFragmentManager().popBackStack();
+            return;
+        }
+
+        if (!mMenu.findItem(R.id.action_supprimerbon).isVisible()) {
+            super.onBackPressed();
+        }
+
+        if (mMenu.findItem(R.id.action_supprimerbon).isVisible()) {
+            mMenu.findItem(R.id.action_supprimerbon).setVisible(false);
+            mMenu.findItem(R.id.action_supprimer_photos).setVisible(false);
+        }
+        updateBackInvokedCallbackState();
+    }
 
     private void showBarCodeReader() {
         IntentIntegrator integrator = new IntentIntegrator(this);
@@ -795,39 +1073,22 @@ public class MainActivity extends AppCompatActivity {
      * @param message
      */
     private void showMessage(String message) {
-        TextView textView = (TextView) findViewById(R.id.messageText);
+        TextView textView = findViewById(R.id.messageText);
         textView.setText(message);
     }
 
+    public void showCamera2(Order order, String extension) throws ParseException {
+        _repete = true;
+        video = false;
+        dispatchTakePictureIntent(order, extension);
+        //startActivityForResult(cameraIntent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE1);
+    }
 
-    /**
-     * Call the camera intent
-     *
-     * @param order
-     */
-    private void showCamera(Order order) {
-        //  Bundle extras=getIntent().getExtras();
-
-        File folder = FileManager.getImageFolder();
-
-        // avoid to start upload pics to server during the picture taken process
-       // order.touch();*/
-
-        currentPictureFile = new File(folder.getPath() + "/" + FileManager.createNewImageFileNameForOrder(order.getOrderNumber()));
-        currentPictureFile = FileManager.createNewImageFileForOrder(order.getOrderNumber());
-        Uri outputFileUri = Uri.fromFile(currentPictureFile); // create a file to save the image
-
-        //(intent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE);
-        //ContentValues values = new ContentValues();
-        String deviceName = android.os.Build.MODEL;
-        String deviceMan = android.os.Build.MANUFACTURER;
-        Log.i("Manufacturer",deviceName);
-        Log.i("Manufacturer",deviceMan);
-        imageUri = outputFileUri;
-        imageFile = new File(imageUri.getPath());
-        Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
-        startActivityForResult(cameraIntent,CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE);
+    private void showCamera3(Order order, String extension) throws ParseException {
+        _repete = true;
+        video = true;
+        dispatchTakePictureIntent1(order, extension);
+        //startActivityForResult(cameraIntent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE1);
     }
 
     /**
@@ -835,391 +1096,367 @@ public class MainActivity extends AppCompatActivity {
      */
     private void showGallery(Order order) {
         // Create intent to Open Image applications like Gallery, Google Photos
-        Intent galleryIntent = new Intent(
-                Intent.ACTION_PICK,
-                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        galleryIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-        galleryIntent.setAction(Intent.ACTION_GET_CONTENT);
-        // Start the Intent
-        startActivityForResult(galleryIntent, PICK_IMAGE_MULTIPLE);
+        if (Build.VERSION.SDK_INT < 19) {
 
-
+            // start the image capture Intent
+            Intent intent = new Intent();
+            intent.setType("image/*");
+            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+            intent.setAction(Intent.ACTION_GET_CONTENT);
+            startActivityForResult(Intent.createChooser(intent, "Prise images"), SELECT_VIDEO);
+        } else {
+            pickMultipleMedia.launch(
+                    new PickVisualMediaRequest.Builder()
+                            .setMediaType(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                            .build());
+        }
     }
 
     private void showGallery1(Order order) {
-        // Create intent to Open Image applications like Gallery, Google Photos
-        Intent galleryIntent = new Intent(
-                Intent.ACTION_PICK,
-                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        galleryIntent.setType("image/*");
-        galleryIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-        galleryIntent.setAction(Intent.ACTION_GET_CONTENT);
-        // Start the Intent
-        startActivityForResult(galleryIntent, PICK_IMAGE_MULTIPLE1);
 
-        /*Intent intent = new Intent();
-        intent.setType("image/*");
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-        intent.setAction(Intent.ACTION_GET_CONTENT);
-        startActivityForResult(intent, PICK_IMAGE_MULTIPLE);*/
+        if (Build.VERSION.SDK_INT < 19) {
+            Intent intent = new Intent();
+            intent.setType("video/*");
+            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+            intent.setAction(Intent.ACTION_GET_CONTENT);
+            startActivityForResult(Intent.createChooser(intent, "Prise videos"), SELECT_VIDEOS);
+        } else {
+            // Launch the photo picker and let the user choose only videos.
+            pickMultipleMedia.launch(new PickVisualMediaRequest.Builder()
+                    .setMediaType(ActivityResultContracts.PickVisualMedia.VideoOnly.INSTANCE)
+                    .build());
+        }
 
 
     }
 
-
     @Override
-    protected void onActivityResult(final int requestCode, final int resultCode, final Intent data) {
-
-        if (requestCode == CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE && (resultCode == 0 || resultCode == RESULT_OK) && currentPictureFile.length()!=0) {
-            //Toast.makeText(this, "Nouvelle image rajoutée! ", Toast.LENGTH_SHORT).show();
-            one = new Thread() {
+    protected void onActivityResult(int requestCode, final int resultCode, final Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(resultCode == 0){
+            AcitiviteContext.getContext().runOnUiThread(new Runnable() {
                 public void run() {
-                    OrderManager.currentOrder.addNewPicture(currentPictureFile);
-                    try {
-                        requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
-                        requetesBaseDeDonneeInterne.open();
-                        requetesBaseDeDonneeInterne.ajouterImage(currentPictureFile.getPath());
-                        currentPictureFile = null;
-
-                    } catch (Exception e) {
-
-                    } finally {
-                    }
-
-                    try {
-                        VariablesGlobales.syncNoUpdate = true;
-                        showCamera(OrderManager.currentOrder);
-                    } catch (RuntimeException e) {
-
-                    }
+                    AcitiviteContext.getContext().updateOrderListView();
                 }
-
-            };
-
-            one.start();
-            Log.d("adding_path", "adding path: " + currentPictureFile.toString());
-
-            // From gallery
+            });
         }
+        switch (requestCode) {
+            case 1:
+                VariablesGlobales._noOrder = OrderManager.currentOrder.getOrderNumber();
+                try {
+                    selectedVideos = getSelectedVideos(requestCode, data);
+                } catch (NullPointerException e) {
+                    ////Log.i("message",e.getMessage());
 
+                }
+                OrderManager.persistOrdersToLocalStorage(getBaseContext());
+                break;
+            case 10:
+                AsyncTask.execute(new Runnable() {
+                                          @Override
+                                          public void run() {
+                                              if (RESULT_OK != 0) {
+                                                  VariablesGlobales._noOrder = OrderManager.currentOrder.getOrderNumber();
+                                                  File imageCopy = null;
+                                                  try {
+                                                      imageCopy = FileManager.copyImageFromGallery(currentPictureFile, OrderManager.currentOrder.getOrderNumber(), currentPictureFile.getPath().substring(currentPictureFile.getPath().length() - 4));
+                                                  } catch (IOException | ParseException e) {
+                                                      //e.printStackTrace();
+                                                  }
+
+                                                  Path path = null;
+                                                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                                      path = Paths.get(imageCopy.getPath());
+                                                      try {
+                                                          long size = Files.size(path);
+                                                          if (size == 0) {
+                                                              imageCopy.delete();
+                                                          } else {
+                                                              OrderManager.currentOrder.addNewPicture(imageCopy);
+                                                              //OrderManager.currentOrder.addNewPicture(currentPictureFile);
+                                                              VariablesGlobales._noOrder = OrderManager.currentOrder.getOrderNumber();
+                                                              VariablesGlobales.requeteBd.ajouterImage(currentPictureFile.getPath(), VariablesGlobales._noOrder);
+                                                              currentPictureFile = null;
+                                                              OrderManager.persistOrdersToLocalStorage(getBaseContext());
+                                                              try {
+                                                                  VariablesGlobales.syncNoUpdate = true;
+                                                                  try {
+                                                                      //if (resultCode != 0) {
+                                                                      showCamera2(OrderManager.currentOrder, ".jpg");
+                                                                      //}
+                                                                      //showCamera1(OrderManager.currentOrder, ".jpg");
+                                                                  } catch (ParseException e) {
+                                                                      //e.printStackTrace();
+                                                                  }
+                                                              } catch (RuntimeException e) {
+
+                                                              }
+
+                                                          }
+                                                      } catch (IOException e) {
+                                                          ////e.printStackTrace();
+                                                      }
+                                                  } else {
+
+                                                      long size = imageCopy.length();
+
+                                                      if (size == 0) {
+                                                          imageCopy.delete();
+                                                      } else {
+                                                          OrderManager.currentOrder.addNewPicture(imageCopy);
+                                                          //OrderManager.currentOrder.addNewPicture(currentPictureFile);
+                                                          VariablesGlobales._noOrder = OrderManager.currentOrder.getOrderNumber();
+                                                          VariablesGlobales.requeteBd.ajouterImage(currentPictureFile.getPath(), VariablesGlobales._noOrder);
+                                                          currentPictureFile = null;
+                                                          OrderManager.persistOrdersToLocalStorage(getBaseContext());
+                                                          try {
+                                                              VariablesGlobales.syncNoUpdate = true;
+                                                              try {
+                                                                  //if (resultCode != 0) {
+                                                                  showCamera2(OrderManager.currentOrder, ".jpg");
+                                                                  //}
+                                                                  //showCamera1(OrderManager.currentOrder, ".jpg");
+                                                              } catch (ParseException e) {
+                                                                  //e.printStackTrace();
+                                                              }
+                                                          } catch (RuntimeException e) {
+
+                                                          }
+
+                                                      }
+
+
+                                                  }
+
+                                              }
+
+                                          }
+                                      });
+                break;
+
+            case 2000:
+                        if (RESULT_OK != 0) {
+                            VariablesGlobales._noOrder = OrderManager.currentOrder.getOrderNumber();
+                            File imageCopy = null;
+                            try {
+                                imageCopy = FileManager.copyImageFromGallery(currentPictureFile, OrderManager.currentOrder.getOrderNumber(), currentPictureFile.getPath().substring(currentPictureFile.getPath().length() - 4));
+                            } catch (IOException | ParseException e) {
+                                //e.printStackTrace();
+                            }
+
+                            Path path = null;
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                path = Paths.get(imageCopy.getPath());
+                                try {
+                                    long size = Files.size(path);
+                                    if (size == 0) {
+                                        imageCopy.delete();
+                                    } else {
+                                        OrderManager.currentOrder.addNewPicture(imageCopy);
+                                        VariablesGlobales._noOrder = OrderManager.currentOrder.getOrderNumber();
+                                        VariablesGlobales.requeteBd.ajouterImage(currentPictureFile.getPath(), VariablesGlobales._noOrder);
+                                        OrderManager.persistOrdersToLocalStorage(getBaseContext());
+                                        try {
+                                            VariablesGlobales.syncNoUpdate = true;
+                                            try {
+                                                //if (resultCode != 0) {
+                                                showCamera3(OrderManager.currentOrder, ".mp4");
+                                                //}
+                                                //showCamera1(OrderManager.currentOrder, ".jpg");
+                                            } catch (ParseException e) {
+                                                //e.printStackTrace();
+                                            }
+                                        } catch (RuntimeException e) {
+
+                                        }
+
+                                    }
+                                } catch (IOException e) {
+                                    ////e.printStackTrace();
+                                }
+                            } else {
+                                long size = imageCopy.length();
+
+                                if (size == 0) {
+                                    imageCopy.delete();
+                                } else {
+                                    OrderManager.currentOrder.addNewPicture(imageCopy);
+                                    //OrderManager.currentOrder.addNewPicture(currentPictureFile);
+                                    VariablesGlobales._noOrder = OrderManager.currentOrder.getOrderNumber();
+
+
+                                    VariablesGlobales.requeteBd.ajouterImage(currentPictureFile.getPath(), VariablesGlobales._noOrder);
+                                    currentPictureFile = null;
+                                    OrderManager.persistOrdersToLocalStorage(getBaseContext());
+                                    try {
+                                        VariablesGlobales.syncNoUpdate = true;
+                                        try {
+                                            //if (resultCode != 0) {
+                                            showCamera3(OrderManager.currentOrder, ".jpg");
+                                            //}
+                                            //showCamera1(OrderManager.currentOrder, ".jpg");
+                                        } catch (ParseException e) {
+                                            //e.printStackTrace();
+                                        }
+                                    } catch (RuntimeException e) {
+
+                                    }
+
+                                }
+
+
+                            }
+
+                        }
+                break;
+            default:
+
+                        if(OrderManager.currentOrder !=null) {
+                            VariablesGlobales._noOrder = OrderManager.currentOrder.getOrderNumber();
+                            try {
+                                selectedVideos = getSelectedVideos(requestCode, data);
+                            } catch (NullPointerException e) {
+                                ////Log.i("message",e.getMessage());
+                            }
+                            OrderManager.persistOrdersToLocalStorage(getBaseContext());
+
+                        }
+
+        }
 
         IntentResult scanningResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
         if (scanningResult != null) {
             String scanCode = scanningResult.getContents();
             if (scanCode != null) {
                 //Toast.makeText(this, "Veuillez rajouter des images pour le bon de commande No  " + scanCode, Toast.LENGTH_SHORT).show();
-                OrderManager.createAndSetCurrent(scanCode);
-                try {
-                    showCamera(OrderManager.currentOrder);
-                } catch (RuntimeException e) {
+                boolean orderExiste = false;
+                for (Order order : OrderManager.getOrders()) {
+                    //Log.i("message", String.valueOf(OrderManager.getOrders()));
+                    if (scanCode.substring(0, scanCode.length() - 1).equals(order.getOrderNumber())) {
+                        orderExiste = true;
+                        //Log.i("message", "orderExiste" + scanCode.substring(0, scanCode.length() - 1));
+                        OrderManager.currentOrder = order;
+                        break;
+                    }
+                }
+                if (!orderExiste) {
+                     OrderManager.createAndSetCurrent(scanCode.substring(0, scanCode.length() - 1));
+                }
+                if (!video) {
+                    try {
+                        VariablesGlobales.syncNoUpdate = true;
+                        try {
+                            if (resultCode != 0) {
+                                showCamera2(OrderManager.currentOrder, ".jpg");
+                            }
+                        } catch (ParseException e) {
+                            //e.printStackTrace();
+                        }
+                    } catch (RuntimeException e) {
+
+                    }
+                } else {
+                    try {
+                        VariablesGlobales.syncNoUpdate = true;
+                        try {
+                            if (resultCode != 0) {
+                                showCamera3(OrderManager.currentOrder, ".mp4");
+                            }
+                        } catch (ParseException e) {
+                            //e.printStackTrace();
+                        }
+                    } catch (RuntimeException e) {
+
+                    }
 
                 }
 
             } else {
                 //Toast.makeText(this, "Scan annulé.", Toast.LENGTH_SHORT).show();
+
+                //updateOrderListView();
             }
 
-        } else if (requestCode == CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE && resultCode == RESULT_OK) {
-            //Toast.makeText(this, "Nouvelle image rajoutée! ", Toast.LENGTH_SHORT).show();
-
-        }
-
-
-        try {
-            // When an Image is picked
-            one = new Thread() {
-                public void run() {
-                    if (requestCode == PICK_IMAGE_MULTIPLE1 && resultCode == RESULT_OK
-                            && null != data) {
-                        // Get the Image from data
-                        imagesEncodedList = new ArrayList<String>();
-                        if (data.getClipData() != null) {
-                            /*try {
-                                Thread.sleep(2000);
-                            } catch (InterruptedException e) {
-
-                            }*/
-                            Uri mImageUri = null;
-                            for (int i = 0; i < data.getClipData().getItemCount(); i++) {
-                                mImageUri = data.getClipData().getItemAt(i).getUri();
-                                Log.i("mImageUri", String.valueOf(mImageUri));
-
-                                String wholeID = null;
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                                    wholeID = DocumentsContract.getDocumentId(mImageUri);
-                                }
-
-                                String id = wholeID.split(":")[1];
-                                String[] column = {MediaStore.Images.Media.DATA};
-
-                                String sel = MediaStore.Images.Media._ID + "=?";
-
-                                Cursor cursor = getContentResolver().
-                                        query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                                                column, sel, new String[]{id}, null);
-
-                                String filePath = "";
-
-                                int columnIndex = cursor.getColumnIndex(column[0]);
-
-                                if (cursor.moveToFirst()) {
-                                    filePath = cursor.getString(columnIndex);
-                                    try {
-                                        // Log.i("mImageUri", filePath);
-                                        //String[] tab = filePath.split("/");
-                                        //filePath = "/storage/emulated/0/Pictures/TruxManager/" + tab[tab.length-1];
-                                        //Log.i("mImageUri", filePath);
-
-                                        File imageCopy = FileManager.copyImageFromGallery(new File(filePath), VariablesGlobales.currentOrder.getOrderNumber());
-                                        VariablesGlobales.currentOrder.addNewPicture(imageCopy);
-
-                                        try {
-                                            requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
-                                            requetesBaseDeDonneeInterne.open();
-                                            requetesBaseDeDonneeInterne.ajouterImage(imageCopy.getPath());
-                                            requetesBaseDeDonneeInterne.close();
-                                            // imageCopy.delete();
-
-                                        } catch (Exception e) {
-
-                                        } finally {
-                                        }
-
-
-                                        //Toast.makeText(this, "Nouvelle image rajoutée! ", Toast.LENGTH_SHORT).show();
-                                    } catch(Exception e){
-
-                                    }
-
-                                }
-
-                                cursor.close();
-                                runOnUiThread(new Runnable() {
-
-                                    @Override
-                                    public void run() {
-
-                                        updateOrderListView();
-
-                                    }
-                                });
-
-                                OrderManager.persistOrdersToLocalStorage(getBaseContext());
-
-                                //cursor.close();
-                                try {
-                                    Thread.sleep(500);
-                                } catch (InterruptedException e) {
-
-                                }
-                            }
-                            if (isMyServiceRunning(ServiceUpload.class) == false) {
-                                startService(new Intent(getBaseContext(), ServiceUpload.class));
-                            }
-
-                        } else {
-
-                            imagesEncodedList = new ArrayList<String>();
-                            if (data.getData() != null) {
-
-                                Uri mImageUri = data.getData();
-                                Log.i("mImageUri", String.valueOf(mImageUri));
-
-                                String wholeID = null;
-                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-                                    wholeID = DocumentsContract.getDocumentId(mImageUri);
-                                }
-
-                                String id = wholeID.split(":")[1];
-                                String[] column = {MediaStore.Images.Media.DATA};
-
-                                String sel = MediaStore.Images.Media._ID + "=?";
-
-                                Cursor cursor = getContentResolver().
-                                        query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                                                column, sel, new String[]{id}, null);
-
-                                String filePath = "";
-
-                                int columnIndex = cursor.getColumnIndex(column[0]);
-
-                                if (cursor.moveToFirst()) {
-                                    filePath = cursor.getString(columnIndex);
-                                    try {
-                                        // Log.i("mImageUri", filePath);
-                                        //String[] tab = filePath.split("/");
-                                        //filePath = "/storage/emulated/0/Pictures/TruxManager/" + tab[tab.length-1];
-                                        //Log.i("mImageUri", filePath);
-                                        File imageCopy = FileManager.copyImageFromGallery(new File(filePath), VariablesGlobales.currentOrder.getOrderNumber());
-                                        VariablesGlobales.currentOrder.addNewPicture(imageCopy);
-                                        try {
-                                            requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
-                                            requetesBaseDeDonneeInterne.open();
-                                            requetesBaseDeDonneeInterne.ajouterImage(imageCopy.getPath());
-                                            // imageCopy.delete();
-                                            runOnUiThread(new Runnable() {
-
-                                                @Override
-                                                public void run() {
-
-                                                    updateOrderListView();
-
-                                                }
-                                            });
-
-                                        } catch (Exception e) {
-
-                                        } finally {
-                                        }
-
-                                        if (isMyServiceRunning(ServiceUpload.class) == false) {
-                                            startService(new Intent(getBaseContext(), ServiceUpload.class));
-                                        }
-                                        Log.i("mImageUri", imageCopy.getPath());
-                                        //Toast.makeText(this, "Nouvelle image rajoutée! ", Toast.LENGTH_SHORT).show();
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
-                                    }
-                                }
-
-                                cursor.close();
-
-                                runOnUiThread(new Runnable() {
-
-                                    @Override
-                                    public void run() {
-
-                                        updateOrderListView();
-
-                                    }
-                                });
-
-                                OrderManager.persistOrdersToLocalStorage(getBaseContext());
-                                //cursor.close();
-                            }
-                        }
-                    }
-                }
-            };
-
-            one.start();
-        } catch (Exception e) {
-
-        }
-
-        try {
-            // When an Image is picked
-            one = new Thread() {
-                public void run() {
-                    if (requestCode == PICK_IMAGE_MULTIPLE && resultCode == RESULT_OK
-                            && null != data) {
-                        // Get the Image from data
-                        imagesEncodedList = new ArrayList<String>();
-                        if (data.getData() != null) {
-
-                            Uri mImageUri = data.getData();
-                            Log.i("mImageUri", String.valueOf(mImageUri));
-
-                            String wholeID = null;
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-                                wholeID = DocumentsContract.getDocumentId(mImageUri);
-                            }
-
-                            String id = wholeID.split(":")[1];
-                            String[] column = {MediaStore.Images.Media.DATA};
-
-                            String sel = MediaStore.Images.Media._ID + "=?";
-
-                            Cursor cursor = getContentResolver().
-                                    query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                                            column, sel, new String[]{id}, null);
-
-                            String filePath = "";
-
-                            int columnIndex = cursor.getColumnIndex(column[0]);
-
-                            if (cursor.moveToFirst()) {
-                                filePath = cursor.getString(columnIndex);
-                                try {
-                                    // Log.i("mImageUri", filePath);
-                                    //String[] tab = filePath.split("/");
-                                    //filePath = "/storage/emulated/0/Pictures/TruxManager/" + tab[tab.length-1];
-                                    //Log.i("mImageUri", filePath);
-                                    File imageCopy = FileManager.copyImageFromGallery(new File(filePath), VariablesGlobales.currentOrder.getOrderNumber());
-                                    VariablesGlobales.currentOrder.addNewPicture(imageCopy);
-                                    try {
-                                        requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
-                                        requetesBaseDeDonneeInterne.open();
-                                        requetesBaseDeDonneeInterne.ajouterImage(imageCopy.getPath());
-                                        // imageCopy.delete();
-                                        runOnUiThread(new Runnable() {
-
-                                            @Override
-                                            public void run() {
-
-                                                updateOrderListView();
-
-                                            }
-                                        });
-
-                                    } catch (Exception e) {
-
-                                    } finally {
-                                    }
-
-                                    if (isMyServiceRunning(ServiceUpload.class) == false) {
-                                        startService(new Intent(getBaseContext(), ServiceUpload.class));
-                                    }
-                                    Log.i("mImageUri", imageCopy.getPath());
-                                    //Toast.makeText(this, "Nouvelle image rajoutée! ", Toast.LENGTH_SHORT).show();
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-
-                            cursor.close();
-
-                            runOnUiThread(new Runnable() {
-
-                                @Override
-                                public void run() {
-
-                                    updateOrderListView();
-
-                                }
-                            });
-
-                            OrderManager.persistOrdersToLocalStorage(getBaseContext());
-                            //cursor.close();
-                        }
-                    } else {
-                        //Toast.makeText(this, "You haven't picked Image",
-                        //Toast.LENGTH_LONG).show();
-                    }
-
-
-                }
-            };
-
-            one.start();
-            runOnUiThread(new Runnable() {
-
-                @Override
-                public void run() {
-
-                    updateOrderListView();
-
-                }
-            });
-
-        } catch (Exception e) {
-            //Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG)
-            //.show();
+        } else {
+            try {
+                VariablesGlobales._thread.join();
+            } catch (Exception e) {
+            }
+            VariablesGlobales._thread = null;
+            try {
+                VariablesGlobales._task.cancel(true);
+            }catch (Exception e){
+            }
+            VariablesGlobales._task = null;
+            updateOrderListView();
         }
 
 
     }
 
+    private void createFile(Uri pickerInitialUri) {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/jpg");
+        intent.putExtra(Intent.EXTRA_TITLE, "Choix des photos");
+
+        // Optionally, specify a URI for the directory that should be opened in
+        // the system file picker when your app creates the document.
+        intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, pickerInitialUri);
+
+        startActivityForResult(intent, SELECT_VIDEOS);
+    }
+
+    private List<String> getSelectedVideos(int requestCode, Intent data) {
+        List<String> result = new ArrayList<>();
+        AsyncTask.execute(new Runnable() {
+                              @Override
+                              public void run() {
+                                  try {
+                                      ClipData clipData = data.getClipData();
+                                      if (clipData != null) {
+                                          for (int i = 0; i < clipData.getItemCount(); i++) {
+                                              ClipData.Item videoItem = clipData.getItemAt(i);
+                                              Uri videoURI = videoItem.getUri();
+                                              String filePath = getPath(AcitiviteContext.getContext(), videoURI);
+                                              result.add(filePath);
+                                              File imageCopy = new File(filePath);
+                                              OrderManager.currentOrder.addNewPicture(imageCopy);
+                                              VariablesGlobales.requeteBd.ajouterImage(imageCopy.getPath(), VariablesGlobales._noOrder);
+                                          }
+                                      } else {
+                                          Uri videoURI = data.getData();
+                                          String filePath = getPath(AcitiviteContext.getContext(), videoURI);
+                                          result.add(filePath);
+                                          File imageCopy = new File(filePath);
+                                          OrderManager.currentOrder.addNewPicture(imageCopy);
+                                          OrderManager.persistOrdersToLocalStorage(getBaseContext());
+                                          VariablesGlobales.requeteBd.ajouterImage(imageCopy.getPath(), VariablesGlobales._noOrder);
+                                          //Log.i("mImageUri", imageCopy.getPath());
+                                      }
+                                  }catch (Exception e){}
+                                  AcitiviteContext.getContext().runOnUiThread(new Runnable() {
+                                      public void run() {
+                                          AcitiviteContext.getContext().updateOrderListView();
+                                      }
+                                  });
+                              }
+                          });
+
+
+        return  result;
+    }
+
+    public String getPath(Uri uri) {
+        String[] projection = {MediaStore.Images.Media.DATA};
+        Cursor cursor = managedQuery(uri, projection, null, null, null);
+        if (cursor != null) {
+            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA);
+            cursor.moveToFirst();
+            return cursor.getString(column_index);
+        } else return null;
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -1241,31 +1478,22 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        choixDuTheme();
-        //updateOrderListView();
-        if(isSelected==true) {
+        if (isSelected) {
             setMenu();
         }
-
-        snackBarInfo=false;
-
-
-        if(isMyServiceRunning(ServiceUpload.class)==false) {
-            startService(new Intent(this, ServiceUpload.class));
-        }
-
-
-
+        snackBarInfo = false;
 
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if (event.getKeyCode() == KeyEvent.KEYCODE_POWER) {
-            // do what you want with the power button
-            Toast.makeText(MainActivity.this, "Your LongPress Power Button", Toast.LENGTH_SHORT).show();
-        }
-        return super.dispatchKeyEvent(event);
+        int keyPressed = event.getKeyCode();
+        if (keyPressed == KeyEvent.KEYCODE_POWER) {
+            //Log.d("###", "Power button long click");
+            Toast.makeText(MainActivity.this, "Clicked: " + keyPressed, Toast.LENGTH_SHORT).show();
+            return true;
+        } else
+            return super.dispatchKeyEvent(event);
     }
 
     @SuppressLint("ResourceType")
@@ -1278,32 +1506,20 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
         if (id == R.id.action_supprimerbon) {
             mShowVisible = false; // or false
-            mySnackbar.setText("Suppression definitive bon "+ ordre.getOrderNumber());
-            mySnackbar.setAction(R.string.annuler, new MyUndoListener1(MainActivity.this,ordre));
-            if(VariablesGlobales.networkInfos ==true){
-                mySnackbar.setActionTextColor(ContextCompat.getColor(this, R.color.colorAccent));
-            }
-            else {
-                mySnackbar.setActionTextColor(Color.parseColor("#9b0000"));
-            }
+            mySnackbar.setText("Suppression definitive bon " + ordre.getOrderNumber());
+            mySnackbar.setAction(R.string.annuler, new MyUndoListener1(MainActivity.this, ordre));
             mySnackbar.show();
             invalidateOptionsMenu();
-            clearPhoto=true;
+            clearPhoto = true;
             handlerClearPhotos = new Handler();
             handlerClearPhotos.postDelayed(runnableClearPhotos = new Runnable() {
                 @Override
                 public void run() {
-                    if(clearPhoto==true) {
+                    if (clearPhoto) {
+                        VariablesGlobales.requeteBd.effacerImages(ordre.getOrderNumber());
                         OrderManager.removeCurrentOrder();
-                        ////Toast.makeText(thisActivity, "Bon de commande " + ordre.getOrderNumber() + " supprimé", Toast.LENGTH_LONG).show();
-                        if (VariablesGlobales.syncNoUpdate == true) {
-                            VariablesGlobales.syncNoUpdate = false;
-                            if(ServerCommService.getExistingInstance(MainActivity.this)!=null) {
-                                ServerCommService.getExistingInstance(MainActivity.this).forceSynchroNow();
-                            }
-                        }
-                        updateOrderListView();
                         mySnackbar.dismiss();
+                        updateOrderListView();
                     }
                 }
             }, 10000);
@@ -1313,42 +1529,28 @@ public class MainActivity extends AppCompatActivity {
 
         if (id == R.id.action_supprimer_photos) {
             mShowVisible = false; // or false
-            mySnackbar.setText("Suppression photos bon " + ordre.getOrderNumber());
+            mySnackbar.setText("Suppression medias bon " + ordre.getOrderNumber());
             mySnackbar.setAction(R.string.annuler, new MyUndoListener(MainActivity.this, ordre));
-            if(lectureDesParametres("action_theme").equals("color")) {
-                if (VariablesGlobales.networkInfos == true) {
-                    mySnackbar.setActionTextColor(ContextCompat.getColor(this, R.color.colorAccent));
-                } else {
-                    mySnackbar.setActionTextColor(Color.parseColor("#9b0000"));
-                }
-            }
-            else {
-                if (VariablesGlobales.networkInfos == true) {
-                    mySnackbar.setActionTextColor(Color.parseColor("#ffffff"));
-                } else {
-                    mySnackbar.setActionTextColor(Color.parseColor("#9b0000"));
-                }
-            }
             mySnackbar.show();
             mMenu.findItem(R.id.action_gallery).setVisible(true);
-            mMenu.findItem(R.id.action_gallery_mult).setVisible(true);
+            mMenu.findItem(R.id.action_video_mult).setVisible(true);
+            mMenu.findItem(R.id.action_video_simple).setVisible(true);
             mMenu.findItem(R.id.action_photo).setVisible(true);
             invalidateOptionsMenu();
-            cleanPhoto=true;
+            cleanPhoto = true;
             handlerCleanPhotos = new Handler();
-            handlerCleanPhotos.postDelayed( runnableCleanPhotos = new Runnable() {
+            handlerCleanPhotos.postDelayed(runnableCleanPhotos = new Runnable() {
                 @Override
                 public void run() {
-                    if(cleanPhoto==true) {
-                        ordre.cleanImageFilesOnPhone(ordre);
-                        if (VariablesGlobales.syncNoUpdate == true) {
-                            VariablesGlobales.syncNoUpdate = false;
-                            if(ServerCommService.getExistingInstance(MainActivity.this)!=null) {
-                                ServerCommService.getExistingInstance(MainActivity.this).forceSynchroNow();
-                            }
+                    if (cleanPhoto) {
+                        ArrayList<String[]> lstimages = new ArrayList<>();
+                        lstimages = (ArrayList<String[]>) VariablesGlobales.requeteBd.selectImagesNumero(ordre.getOrderNumber());
+                        for (String[] picture : lstimages) {
+                                VariablesGlobales.requeteBd.effacerIamgeById(picture[0]);
                         }
-                        ////Toast.makeText(thisActivity, "Toutes les photos du bon: " + ordre.getOrderNumber() + " effacées.", Toast.LENGTH_LONG).show();
+                        ordre.cleanImageFilesOnPhone(ordre);
                         updateOrderListView();
+                        ////Toast.makeText(thisActivity, "Toutes les medias du bon: " + ordre.getOrderNumber() + " effacées.", Toast.LENGTH_LONG).show();
                     }
                 }
             }, 10000);
@@ -1357,49 +1559,54 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (id == R.id.action_gallery) {
-            /*Intent intent = new Intent();
-            intent.setType("image/*");
-            intent.setAction(Intent.ACTION_VIEW);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);*/
-            //if(isSelected) {
             showGallery(OrderManager.currentOrder);
-            /*}
-            else {
-                mySnackbar.setText("Aucun bon selectionné "+ ordre.getOrderNumber());
-                mySnackbar.setAction(R.string.ok, new MyUndoListener(MainActivity.this,ordre));
-                if(VariablesGlobales.networkInfos ==true){
-                    mySnackbar.setActionTextColor(ContextCompat.getColor(this, R.color.colorAccent));
-                }
-                else {
-                    mySnackbar.setActionTextColor(Color.parseColor("#9b0000"));
-                }
-            }*/
             return true;
         }
 
-        if (id == R.id.action_gallery_mult) {
-            /*Intent intent = new Intent();
-            intent.setType("image/*");
-            intent.setAction(Intent.ACTION_VIEW);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);*/
-            //if(isSelected) {
+        if (id == R.id.action_supprimer_photos_all) {
+            mShowVisible = false; // or false
+            mySnackbar.setText("Suppression medias et bon.");
+            mySnackbar.setAction(R.string.annuler, new MyUndoListener3(MainActivity.this, ordre));
+            mySnackbar.show();
+            mMenu.findItem(R.id.action_gallery).setVisible(true);
+            mMenu.findItem(R.id.action_video_mult).setVisible(true);
+            mMenu.findItem(R.id.action_video_simple).setVisible(true);
+            mMenu.findItem(R.id.action_photo).setVisible(true);
+            invalidateOptionsMenu();
+            cleanPhoto = true;
+            handlerCleanPhotos = new Handler();
+            handlerCleanPhotos.postDelayed(runnableCleanPhotos = new Runnable() {
+                @Override
+                public void run() {
+                    if (cleanPhoto) {
+
+
+                        ArrayList<String[]> lstimages = new ArrayList<>();
+                        VariablesGlobales.requeteBd.effacerImages1();
+                        OrderManager.removeOrders();
+                        updateOrderListView();
+                        ////Toast.makeText(thisActivity, "Toutes les medias du bon: " + ordre.getOrderNumber() + " effacées.", Toast.LENGTH_LONG).show();
+                    }
+                }
+            }, 10000);
+
+            return true;
+        }
+
+        if (id == R.id.action_video_simple) {
+            if (OrderManager.currentOrder != null) {
+                try {
+                    showCamera3(OrderManager.currentOrder, ".mp4");
+                } catch (ParseException e) {
+                }
+            }
+            return true;
+        }
+
+        if (id == R.id.action_video_mult) {
             showGallery1(OrderManager.currentOrder);
-            /*}
-            else {
-                mySnackbar.setText("Aucun bon selectionné "+ ordre.getOrderNumber());
-                mySnackbar.setAction(R.string.ok, new MyUndoListener(MainActivity.this,ordre));
-                if(VariablesGlobales.networkInfos ==true){
-                    mySnackbar.setActionTextColor(ContextCompat.getColor(this, R.color.colorAccent));
-                }
-                else {
-                    mySnackbar.setActionTextColor(Color.parseColor("#9b0000"));
-                }
-            }*/
             return true;
         }
-
 
 
         if (id == R.id.action_photo) {
@@ -1410,10 +1617,18 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);*/
             //if(isSelected) {
             //OrderManager.currentOrder.addNewPicture(currentPictureFile);
-            if(OrderManager.currentOrder!=null) {
-                showCamera(OrderManager.currentOrder);
-            }
-            else {
+            if (OrderManager.currentOrder != null) {
+                try {
+                    VariablesGlobales.syncNoUpdate = true;
+                    try {
+                        showCamera2(OrderManager.currentOrder, ".jpg");
+                    } catch (ParseException e) {
+                        //e.printStackTrace();
+                    }
+                } catch (RuntimeException e) {
+
+                }
+            } else {
                 View view1 = getWindow().getDecorView().getRootView();
                 mySnackbar1 = Snackbar.make(view1, R.id.mycoordinatorlayout, 10000);
                 mySnackbar1.setText("Aucun ticket séléctionné.");
@@ -1421,41 +1636,32 @@ public class MainActivity extends AppCompatActivity {
                 mySnackbar1.setActionTextColor(Color.parseColor("#ffffff"));
                 mySnackbar1.show();
             }
-            /*}
-            else {
-                mySnackbar.setText("Aucun bon selectionné "+ ordre.getOrderNumber());
-                mySnackbar.setAction(R.string.ok, new MyUndoListener(MainActivity.this,ordre));
-                if(VariablesGlobales.networkInfos ==true){
-                    mySnackbar.setActionTextColor(ContextCompat.getColor(this, R.color.colorAccent));
-                }
-                else {
-                    mySnackbar.setActionTextColor(Color.parseColor("#9b0000"));
-                }
-            }*/
             return true;
         }
 
         if (id == R.id.action_parametres) {
-            FragmentParametres fragment = new FragmentParametres(MainActivity.this);
-            FragmentManager fragmentManager = getSupportFragmentManager();
-            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-            fragmentTransaction.add(R.id.frame_content, fragment).addToBackStack(null);
-            fragmentTransaction.commit();
+            try {
+                PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+                String version = pInfo.versionName;
+                _textViewinfo.setText("Vesion: " + pInfo.versionName + " - Code: " + pInfo.versionCode);
+
+            } catch (PackageManager.NameNotFoundException e) {
+            }
             return true;
         }
+        /*if (id == R.id.whatsapp) {
+            // Choose a directory using the system's file picker.
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            // Optionally, specify a URI for the directory that should be opened in
+            // the system file picker when it loads.
 
-
-
-        /*if (id == R.id.action_sychronizer) {
-            ServerCommService.getExistingInstance().forceSynchroNow();
+            Uri wa_status_uri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3AAndroid%2Fmedia/document/primary%3AAndroid%2Fmedia%2Fcom.whatsapp%2FWhatsApp%2FMedia%2FWhatsApp%20Images");
+            intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, wa_status_uri);
+            startActivityForResult(intent, SELECT_VIDEOS);
             return true;
         }*/
-
-
-
         return super.onOptionsItemSelected(item);
     }
-
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -1468,35 +1674,35 @@ public class MainActivity extends AppCompatActivity {
                     //Toast.makeText(this, "The app was not allowed to write to your storage. Hence, it cannot function properly. Please consider granting it this permission", Toast.LENGTH_LONG).show();
                 }
             }
-            case CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE:{
-                if (grantResults.length > 0 && grantResults[0]==PackageManager.PERMISSION_GRANTED){
+            case CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     //openCamera();
                 } else {
                 }
-                }
+            }
         }
 
     }
 
-
     public void ContoleEtatDuReseau() {
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo networkInfo = cm.getActiveNetworkInfo();
-        if (networkInfo != null && networkInfo.getState() == NetworkInfo.State.CONNECTED) {
-            Log.i("infoReseau","Internet disponible");
+        if (new Internet(MainActivity.this).checkWifiConnect()) {
+            //Log.i("infoReseau", "Internet disponible");
             VariablesGlobales.networkInfos = true;
-            setTitle(Html.fromHtml("Trux Manager"));
-
+            AcitiviteContext.getContext().updateOrderListView();
         } else {
-            setTitle(Html.fromHtml("Trux Manager"));
+            try {
+                VariablesGlobales._thread.join();
+            } catch (Exception e) {
+            }
+            VariablesGlobales._thread = null;
+            try {
+                VariablesGlobales._task.cancel(true);
+            }catch (Exception e){
+            }
+            VariablesGlobales._task = null;
             VariablesGlobales.networkInfos = false;
             VariablesGlobales.syncNoUpdate = true;
-            Log.i("infoReseau","Internet indisponible");
-
         }
-
-        choixDuTheme();
-        updateOrderListView();
 
     }
 
@@ -1531,776 +1737,175 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-
-
-
-    private void setMenu(){
-        if(isSelected==true) {
-            switch (lectureDesParametres("action_default")) {
-                case "":
-                    break;
-                case "photo_gallerie":
+    private void setMenu() {
+        if (isSelected) {
                     mMenu.findItem(R.id.action_supprimer_photos).setVisible(false);
                     mMenu.findItem(R.id.action_supprimerbon).setVisible(false);
                     mMenu.findItem(R.id.action_gallery).setVisible(true);
-                    mMenu.findItem(R.id.action_gallery_mult).setVisible(true);
+                    mMenu.findItem(R.id.action_video_mult).setVisible(true);
+                    mMenu.findItem(R.id.action_video_simple).setVisible(true);
                     mMenu.findItem(R.id.action_photo).setVisible(true);
-                    break;
-                case "photo":
-                    mMenu.findItem(R.id.action_supprimer_photos).setVisible(false);
-                    mMenu.findItem(R.id.action_supprimerbon).setVisible(false);
-                    mMenu.findItem(R.id.action_gallery).setVisible(true);
-                    mMenu.findItem(R.id.action_gallery_mult).setVisible(true);
-                    mMenu.findItem(R.id.action_photo).setVisible(false);
-                    break;
-                case "gallerie":
-                    mMenu.findItem(R.id.action_supprimer_photos).setVisible(false);
-                    mMenu.findItem(R.id.action_supprimerbon).setVisible(false);
-                    mMenu.findItem(R.id.action_gallery).setVisible(false);
-                    mMenu.findItem(R.id.action_gallery_mult).setVisible(false);
-                    mMenu.findItem(R.id.action_photo).setVisible(true);
-                    break;
-            }
-        }
-        else{
+                    mMenu.findItem(R.id.action_parametres).setVisible(true);
+                    mMenu.findItem(R.id.action_supprimer_photos_all).setVisible(true);
+        } else {
             mMenu.findItem(R.id.action_supprimer_photos).setVisible(false);
             mMenu.findItem(R.id.action_supprimerbon).setVisible(false);
             mMenu.findItem(R.id.action_gallery).setVisible(false);
-            mMenu.findItem(R.id.action_gallery_mult).setVisible(false);
+            mMenu.findItem(R.id.action_video_mult).setVisible(false);
+            mMenu.findItem(R.id.action_video_simple).setVisible(false);
             mMenu.findItem(R.id.action_photo).setVisible(false);
-        }
-    }
-
-    public void choixDuTheme()
-
-    {
-
-        if ( VariablesGlobales.networkInfos == false) {
-            Toolbar actionBarToolbar = (Toolbar) findViewById(R.id.action_bar);
-            if (actionBarToolbar != null)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    actionBarToolbar.setBackgroundColor(Color.parseColor("#d50000"));
-                }
-            setStatusBarColor("#9b0000");
-            getSupportActionBar().setBackgroundDrawable(
-                    new ColorDrawable(Color.RED));
-
-            addButton.getBackground().setColorFilter(Color.parseColor("#9b0000"), PorterDuff.Mode.MULTIPLY);
-        }
-        else{
-            if (lectureDesParametres("action_theme").equals("color") || lectureDesParametres("action_theme").equals("")  ){
-                Toolbar actionBarToolbar = (Toolbar)findViewById(R.id.action_bar);
-                if (actionBarToolbar != null)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        actionBarToolbar.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
-                    }
-                setStatusBarColor("#005407");
-
-                addButton.getBackground().setColorFilter(ContextCompat.getColor(this, R.color.colorAccent), PorterDuff.Mode.MULTIPLY);
-            }
-            else {
-                Toolbar actionBarToolbar = (Toolbar)findViewById(R.id.action_bar);
-                if (actionBarToolbar != null)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        actionBarToolbar.setBackgroundColor(Color.parseColor("#616161"));
-                    }
-                setStatusBarColor("#373737");
-
-                addButton.getBackground().setColorFilter(Color.parseColor("#616161"), PorterDuff.Mode.MULTIPLY);
-            }
+            //mMenu.findItem(R.id.action_parametres).setVisible(false);
+            //mMenu.findItem(R.id.action_supprimer_photos_all).setVisible(false);
 
         }
-
-    }
-
-    public void sauvegardeDesParametres(String[] parametres) {
-        boolean prefs = getSharedPreferences("params", Context.MODE_PRIVATE).edit().putString("qualite_photos", parametres[0]).commit();
-        boolean prefs1 = getSharedPreferences("params", Context.MODE_PRIVATE).edit().putString("action_default", parametres[1]).commit();
-        boolean prefs2 = getSharedPreferences("params", Context.MODE_PRIVATE).edit().putString("action_color", parametres[2]).commit();
-        boolean prefs3 = getSharedPreferences("params", Context.MODE_PRIVATE).edit().putString("action_fichier", parametres[3]).commit();
-        boolean prefs4 = getSharedPreferences("params", Context.MODE_PRIVATE).edit().putString("action_taille", parametres[4]).commit();
-        boolean prefs5 = getSharedPreferences("params", Context.MODE_PRIVATE).edit().putString("action_theme", parametres[5]).commit();
-
-
-
     }
 
     private boolean isMyServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {
+                //Log.i(TAG, serviceClass + " is Running");
                 return true;
             }
         }
+        //Log.i(TAG, serviceClass + " Not Running");
         return false;
     }
 
-    /*public synchronized boolean  EmvoiImage(String orderId, String file, Order order, String id) throws IOException {
-        original = null;
-        resized = null;
-        boolean result = false;
-        try {
+    private File createImageFile(String extention) throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = extention + timeStamp + "_";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(
+                imageFileName,  /* prefix */
+                extention,         /* suffix */
+                storageDir      /* directory */
+        );
 
-            if (ftpHostName.equals("")) {
-                try {
-                    SelectionDesParametres();
-                } catch (Exception e) {
+        // Save a file: path for use with ACTION_VIEW intents
+        currentPhotoPath = image.getAbsolutePath();
+        return image;
+    }
 
-                }
-            }
+    private void dispatchTakePictureIntent(Order order, String extension) {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE).addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION |
+                        Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+        );
 
-            if(con == null){
-                con = new FTPSClient();
-            }
-
-
-            con.connect(ftpHostName);
-
-
-            if (con.login(ftpUserName, ftpPassword)) {
-                con.enterLocalPassiveMode(); // important!
-                con.setFileType(FTP.BINARY_FILE_TYPE);
-            }
-
-            FTPFile[] files = new FTPFile[0];
-        FTPFile[] filesExist = new FTPFile[0];
-        Order order1 = new Order();
-        requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
-        requetesBaseDeDonneeInterne.open();
-        String[] file2 = requetesBaseDeDonneeInterne.selectImagesByName(file).get(0);
-        file = file2[1];
-        File f = new File(file);
-        if(!f.exists()) {
-            Log.i("Inrouvable","Fichier introuvable");
+        // Ensure that there's a camera activity to handle the intent
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            // Create the File where the photo should go
+            File photoFile = null;
             try {
-                requetesBaseDeDonneeInterne.effacerIamgeByName(file);
-                Log.i("Inrouvable","Fichier effacer bd");
-                String date_photo = datePhoto(file);
-                String date = "date";
-                String heure = "heure";
-                String[] files1 = file.split("/");
-                String newPath = files1[0] +"/"+ files1[1] +"/"+ files1[2] +"/"+ files1[3] +"/"+ files1[4] +"/"+ files1[5];
-                String _ServeurPath = "";
-                if (!date_photo.equals("")) {
-                    date = date_photo.substring(0, 10).replace(":", "-");
-                    heure = date_photo.substring(11, date_photo.length());
-                    date_photo = date + "_" + heure;
-                    if(!orderId.equals("")) {
-                        renameFile(file, orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg");
-                        _path = newPath + "/" + orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    }else {
-                        String orderId1 = file.split("/")[6];
-                        orderId = orderId1.split("_")[0];
-                        renameFile(file, orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg");
-                        _path = newPath + "/" + orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    }
-                } else {
-                    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd_HH:mm.SSS");//dd/MM/yyyy
-                    Date now = new Date();
-                    String strDate = sdfDate.format(now);
-                    date = strDate.substring(0, 10).replace(":", "-");
-                    heure = strDate.substring(11, strDate.length());
-                    date_photo = date + "_" + heure;
-                    if(!orderId.equals("")) {
-                        renameFile(file, orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg");
-                        _path = newPath +"/"+ orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    }else {
-                        String orderId1 = file.split("/")[6];
-                        orderId = orderId1.split("_")[0];
-                        renameFile(file, orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg");
-                        _path = newPath + "/" + orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    }
+                photoFile = createImageFile(extension);
+            } catch (IOException ex) {
+                // Error occurred while creating the File
 
-                }
-                Log.i("Inrouvable","_ServeurPath" +_ServeurPath);
-                con.rename("/../photo_trux_manager/" + _ServeurPath," /../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5)+"e.jpeg");
+            }
+            // Continue only if the File was successfully created
+            if (photoFile != null) {
+                Uri photoURI = FileProvider.getUriForFile(this,
+                        "ch.parolini.truxmanager.delivery.fileprovider",
+                        photoFile);
+                String path = photoURI.toString();// "file:///mnt/sdcard/FileName.mp3"
 
-            } catch (Exception e) {
-                Log.i("Inrouvable","Fichier introuvable bd" +e.getMessage());
-            } finally {
-                requetesBaseDeDonneeInterne.close();
+                //File file = new File(new URI(path));
+                currentPictureFile = photoFile;
+                //_filePath = file.getPath();
+
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                startActivityForResult(takePictureIntent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE1);
             }
         }
+    }
 
+    private void dispatchTakePictureIntent1(Order order, String extension) {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE).addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION |
+                        Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+        );
+        // Ensure that there's a camera activity to handle the intent
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            // Create the File where the photo should go
+            File photoFile = null;
+            try {
+                photoFile = createImageFile(extension);
+            } catch (IOException ex) {
+                // Error occurred while creating the File
 
-
-        Log.i("FileLength",String.valueOf(f.getName()));
-        if(f.length()>500000){
-
-            String data = file;
-
-            byte[] b = null;
-
-
-            String compression = lectureDesParametres1("qualite_photos");
-
-
-
-            //FileInputStream in = new FileInputStream(new File(data));
-            //original = BitmapFactory.decodeStream(in);
-            original = decodeFileForDisplay(new File(data));
-            //original.eraseColor(Color.TRANSPARENT);
-            String date_photo = datePhoto(data);
-            String date = "date";
-            String heure = "heure";
-            String[] files1 = file.split("/");
-            String newPath = files1[0] +"/"+ files1[1] +"/"+ files1[2] +"/"+ files1[3] +"/"+ files1[4] +"/"+ files1[5];
-            String _ServeurPath = "";
-            if (!date_photo.equals("")) {
-                date = date_photo.substring(0, 10).replace(":", "-");
-                heure = date_photo.substring(11, date_photo.length());
-                date_photo = date + "_" + heure;
-                if(!orderId.equals("")) {
-                    renameFile(file, orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg");
-                    _path = newPath + "/" + orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                }else {
-                   String orderId1 = file.split("/")[6];
-                    orderId = orderId1.split("_")[0];
-                    renameFile(file, orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg");
-                    _path = newPath + "/" + orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                }
-            } else {
-                SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd_HH:mm.SSS");//dd/MM/yyyy
-                Date now = new Date();
-                String strDate = sdfDate.format(now);
-                date = strDate.substring(0, 10).replace(":", "-");
-                heure = strDate.substring(11, strDate.length());
-                date_photo = date + "_" + heure;
-                if(!orderId.equals("")) {
-                renameFile(file, orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg");
-                _path = newPath +"/"+ orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg";
-                _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                }else {
-                    String orderId1 = file.split("/")[6];
-                    orderId = orderId1.split("_")[0];
-                    renameFile(file, orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg");
-                    _path = newPath + "/" + orderId + "_" + strDate + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    _ServeurPath = orderId + "_" + date_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                }
             }
+            // Continue only if the File was successfully created
+            if (photoFile != null) {
+                Uri photoURI = FileProvider.getUriForFile(this,
+                        "ch.parolini.truxmanager.delivery.fileprovider",
+                        photoFile);
+                String path = photoURI.toString();// "file:///mnt/sdcard/FileName.mp3"
 
-            Log.i("FileName",file);
-            Log.i("FIleName","_path" +_path);
-            String tempFilePath = getTempFilePath(_path);
-            File tempFile = new File(tempFilePath);
-            filesExist = con.listFiles("/../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5) +"f.jpeg");
+                //File file = new File(new URI(path));
+                currentPictureFile = photoFile;
+                //_filePath = file.getPath();
 
-            for (FTPFile file1 : filesExist) {
-                Log.d("UploadTrue",file1.getName());
-                File target;
-                File target1;
-                String[] files2 = _path.split("/");
-                try {
-                    requetesBaseDeDonneeInterne  = new Requetes(AppContext.getAppContext());
-                    requetesBaseDeDonneeInterne.open();
-                    requetesBaseDeDonneeInterne.effacerIamgeById(id);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                startActivityForResult(takePictureIntent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE1);
+            }
+        }
+    }
 
-                target = new File(file);
-                target1 = new File(file.substring(0, file.length() - 4) + "_preview.jpeg");
-                if (target1.exists() && target1.isFile() && target1.canWrite()) {
-                    target1.delete();
-                    Log.d("d_file", "" + target1.getName());
-                }
-                if (target.exists() && target.isFile() && target.canWrite()) {
-                    target.delete();
-                    Log.d("d_file", "" + target.getName());
-                }
-                order.deleteNumbre();
-                notifiyOrderSent(order);
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
 
-
-                } catch (Exception e) {
-
-                } finally {
-                }
-
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_POWER: {
+                //Toast.makeText(getBaseContext(), "Power button pressed", Toast.LENGTH_LONG).show();
+                //Log.i("forground", ".S. Power button pressed");
                 return true;
-            }*/
-
-
-    //ByteArrayOutputStream out = new ByteArrayOutputStream();
-
-
-
-// Get stream from temp (exif loaded) file
-
-
-
-
-            /*if(compression.equals("")) {
-                original.compress(Bitmap.CompressFormat.JPEG, Integer.parseInt(compression), out);
             }
-            else {
-                original.compress(Bitmap.CompressFormat.JPEG, 100, out);
-            }*/
-
-            /*files = con.listFiles("/../photo_trux_manager/" + _ServeurPath);
-
-            long fileSizeInBytes = 0;
-            long fileSizeInKB = 0;
-
-
-            for (FTPFile file1 : files) {
-
-                // Get file from file name
-                //File file2 = new File(file.getPath());
-                inFTP = true;
-
-                // Convert the bytes to Kilobytes (1 KB = 1024 Bytes)
-                fileSizeInKB =  file1.getSize();
-                byte[] byteFile = readFile(tempFile);
-                if(fileSizeInBytes==fileSizeInKB || fileSizeInKB > fileSizeInBytes ) {
-
-
-                }
-
-            }*/
-    //fis.read(out.toByteArray());
-
-    // Log.i("QualiteEnvoi", lectureDesParametres1("qualite_photos"));
-
-    // Get length of file in bytes
-    //fileSizeInBytes = file.length();
-    // Convert the bytes to Kilobytes (1 KB = 1024 Bytes)
-
-
-
-
-    //b = fis1.
-
-// Remove the temp file
-
-// Finalize
-
-
-// Get stream from temp (exif loaded) file
-
-// Remove the temp file
-    //boolean deleted = tempFilePath.delete();
-
-// Finalize
-
-            /*if (b == null) {
-                b = out.toByteArray();
-            }*/
-
-
-
-            /*try {
-                FileOutputStream out = new FileOutputStream(tempFilePath);
-                original.compress(Bitmap.CompressFormat.JPEG, Integer.parseInt(compression), out);
-                copyExif(file, tempFilePath);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-// Get stream from temp (exif loaded) file
-
-            byte[] byteFile = readFile(tempFile);
-            ByteArrayInputStream fis1 = new ByteArrayInputStream(byteFile);
-
-// Remove the temp file
-
-
-// Finalize
-            int fileSize = byteFile.length;
-            con.setRestartOffset(fileSizeInKB);
-            //result = con.storeFile("/../photo_trux_manager/" + _path, new ByteArrayInputStream(b));
-
-            result = con.appendFile("/../photo_trux_manager/" + _ServeurPath, fis1);
-
-
-            if(result == true){
-                con.rename("/../photo_trux_manager/" + _ServeurPath," /../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5)+"f.jpeg");
-                boolean deleted = tempFile.delete();
-            }
-
-            filesExist = con.listFiles("/../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5) +"f.jpeg");
-
-            File target;
-            File target1;
-            String[] files2 = _path.split("/");
-           /* target = new File(getImageFolder()+"/"+files2[1]);
-            target1 = new File(getImageFolder()+"/"+files2[1].substring(0, (getImageFolder()+"/"+files2[1]).length() - 4) + "_preview.jpeg");
-            if(filesExist.length!=0) {
-                if (target1.exists() && target1.isFile() && target1.canWrite()) {
-                    target1.delete();
-                    Log.d("Files", "Delete" + target1.getName());
-                }
-            }*/
-
-            /*if (lectureDesParametres1("action_fichier").equals("effacer") && filesExist.length!=0) {
-                if (target.exists() && target.isFile() && target.canWrite()) {
-                    target.delete();
-                    Log.d("Files", "Delete" + target.getName());
-                }
-            }
-
-            if (original != null && original.isRecycled() == false) {
-                original.recycle();
-            }
-            if (resized != null && resized.isRecycled() == false) {
-                resized.recycle();
-            }
-
-
-        }else{
-            try {
-                requetesBaseDeDonneeInterne  = new Requetes(AppContext.getAppContext());
-                requetesBaseDeDonneeInterne.open();
-                requetesBaseDeDonneeInterne.effacerIamgeById(id);
-                File target;
-                File target1;
-                target = new File(file);
-                target1 = new File(file.substring(0, file.length() - 4) + "_preview.jpeg");
-                if (target1.exists() && target1.isFile() && target1.canWrite()) {
-                    target1.delete();
-                    Log.d("d_file", "" + target1.getName());
-                }
-                if (target.exists() && target.isFile() && target.canWrite()) {
-                    target.delete();
-                    Log.d("d_file", "" + target.getName());
-                }
-                order.deleteNumbre();
-                notifiyOrderSent(order);
-
-
-            } catch (Exception e) {
-
-            } finally {
-            }
+            case KeyEvent.KEYCODE_MENU:
+                //Toast.makeText(getBaseContext(), "Menu Button Pressed", Toast.LENGTH_LONG).show();
+                //Log.i("forground", ".S. Menu Button Pressed");
+                return true;
         }
-
-
-
-        if(result == true) {
-            try {
-                requetesBaseDeDonneeInterne  = new Requetes(AppContext.getAppContext());
-                requetesBaseDeDonneeInterne.open();
-                requetesBaseDeDonneeInterne.effacerIamgeById(id);
-
-                File target;
-                File target1;
-                target = new File(file);
-                target1 = new File(file.substring(0, file.length() - 4) + "_preview.jpeg");
-                if (target1.exists() && target1.isFile() && target1.canWrite()) {
-                    target1.delete();
-                    Log.d("d_file", "" + target1.getName());
-                }
-                if (target.exists() && target.isFile() && target.canWrite()) {
-                    target.delete();
-                    Log.d("d_file", "" + target.getName());
-                }
-                order.deleteNumbre();
-                notifiyOrderSent(order);
-
-
-            } catch (Exception e) {
-
-            } finally {
-            }
-        }
-
-
-        Log.i("BaseDeDonnee", result + "_" + _path);
-
-
-
-        } catch (Exception e) {
-            Log.i("resultat", false + "_" + e.getMessage() + "_" + _path);
-            //return false;
-        } finally {
-            if (con != null) {
-                con.logout();
-                con.disconnect();
-            }
-        }
-        return result;
-    }*/
-
-
-    private void notifiyOrderSent(Order order) {
-        Intent intent = new Intent("onOrderSent");
-        intent.putExtra("order", order);
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+        return super.onKeyDown(keyCode, event);
     }
 
-
-
-    private static String lectureDesParametres1(String key) {
-        String datas = "";
-        String prefs = AppContext.getAppContext().getSharedPreferences("params", Context.MODE_PRIVATE).getString(key, datas);
-        return prefs;
-
-
-    }
-
-    private static String datePhoto(String filePath) {
-        File file = new File(filePath);
-        if (file.exists()) //Extra check, Just to validate the given path
-        {
-            ExifInterface intf = null;
-            try {
-                intf = new ExifInterface(filePath);
-                if (intf != null) {
-                    dateExif = intf.getAttribute(ExifInterface.TAG_DATETIME);
-                    //intf.get(ExifInterface.)
-                    //Log.i("Dated : " + dateString); //Dispaly dateString. You can do/use it your own way
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-
-
-                if (intf == null) {
-                    //lastModDate = new Date(file.lastModified());
-                    //Log.i("Dated : " + lastModDate.toString());//Dispaly lastModDate. You can do/use it your own way
-                }
-            }
-            if (dateExif == null) {
-                dateExif = "";
-            }
+    @Override
+    public boolean onKeyLongPress(int keyCode, KeyEvent event) {
+        //Log.i("forground", ".S. onKeyLongPress PRESSED");
+        if (keyCode == KeyEvent.KEYCODE_POWER) {
+            // Do something here...
+            return true;
         }
-        return dateExif;
-    }
-
-    public static void SelectionDesParametres() throws Exception {
-        try {
-            String jsonStr = null;
-            try {
-                jsonStr = getJson(GetData(_urlJsonParamerte));
-            } catch (IOException e) {
-
-            }
-            if (jsonStr != null) {
-                try {
-                    JSONObject json = new JSONObject(jsonStr);
-                    JSONArray jArray = json.getJSONArray("donnees");
-
-                    for (int j = 0; j < jArray.length(); j++) {
-                        JSONObject values = jArray.getJSONObject(j);
-                        ftpHostName = values.getString("fT6RqE7");
-                        ftpUserName = values.getString("M6Hg7ZQ");
-                        ftpPassword = values.getString("K9Jd0s4");
-                    }
-                } catch (final JSONException e) {
-                    String s;
-                }
-            }
-        } catch (Exception e) {
-            String s;
-        }
-    }
-
-    public static HttpResponse GetData(String url) throws IOException {
-
-        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-
-        StrictMode.setThreadPolicy(policy);
-        String url1 = url;
-        HttpPost httppost = new HttpPost(url1);
-        return getNewHttpClient1().execute(httppost);
-
-    }
-
-    private static String getJson(HttpResponse httpClient) {
-        StringBuilder sb = new StringBuilder();
-        try {
-            HttpGet getRequest = new HttpGet(_urlJsonParamerte);
-            getRequest.addHeader("accept", "application/json");
-
-            HttpResponse response = httpClient;
-
-            String output;
-            BufferedReader br = new BufferedReader(new InputStreamReader((response.getEntity().getContent())));
-            while ((output = br.readLine()) != null) {
-                sb.append(output);
-            }
-        } catch (Exception e) {
-            String s;
-        }
-        return sb.toString();
-    }
-
-    public static DefaultHttpClient getNewHttpClient1() {
-        try {
-            KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-            trustStore.load(null, null);
-
-            HttpParams params = new BasicHttpParams();
-            HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
-            HttpProtocolParams.setContentCharset(params, HTTP.UTF_8);
-
-            SchemeRegistry registry = new SchemeRegistry();
-            registry.register(new Scheme("http", PlainSocketFactory
-                    .getSocketFactory(), 80));
-            registry.register(new Scheme("https", new EasySSLSocketFactory(), 443));
-
-            ClientConnectionManager ccm = new ThreadSafeClientConnManager(params, registry);
-            return new DefaultHttpClient(ccm, params);
-        } catch (Exception e) {
-            return new DefaultHttpClient();
-        }
-    }
-
-    public static Bitmap decodeFileForDisplay(File f){
-
-        try {
-            //Decode image size
-            BitmapFactory.Options o = new BitmapFactory.Options();
-            //o.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(new FileInputStream(f),null,o);
-            DisplayMetrics metrics = AppContext.getAppContext().getResources().getDisplayMetrics();
-
-            //The new size we want to scale to
-            //final int REQUIRED_SIZE=180;
-
-            // int scaleW =  o.outWidth / metrics.widthPixels;
-            //int scaleH =  o.outHeight / metrics.heightPixels;
-            //int scale = Math.max(scaleW,scaleH);
-            //Log.d("CCBitmapUtils", "Scale Factor:"+scale);
-            //Find the correct scale value. It should be the power of 2.
-
-            //Decode with inSampleSize
-            BitmapFactory.Options o2 = new BitmapFactory.Options();
-            //o2.inSampleSize=scale;
-            Bitmap scaledPhoto = BitmapFactory.decodeStream(new FileInputStream(f), null, o2);
-            return scaledPhoto;
-
-        } catch (FileNotFoundException e) {}
-        return null;
-    }
-
-    public static void renameFile(String oldFile, String newFile) throws IOException {
-// File (or directory) with old name
-        File file = new File(oldFile);
-
-// File (or directory) with new name
-        File file2 = new File(newFile);
-
-        if (file2.exists())
-            throw new java.io.IOException("file exists");
-
-// Rename file (or directory)
-        boolean success = file.renameTo(file2);
-
-        if (!success) {
-            // File was not successfully renamed
-        }
-
-
-
-    }
-
-    private String getTempFilePath(String filename) {
-        String temp = "_temp";
-        int dot = filename.lastIndexOf(".");
-        String ext = filename.substring(dot + 1);
-
-        if (dot == -1 || !ext.matches("\\w+")) {
-            filename += temp;
-        } else {
-            filename = filename.substring(0, dot) + temp + "." + ext;
-        }
-
-        return filename;
-    }
-
-    public static void copyExif(String originalPath, String newPath) throws IOException {
-
-        String[] attributes = new String[]
-                {
-                        ExifInterface.TAG_DATETIME,
-                        ExifInterface.TAG_DATETIME_DIGITIZED,
-                        ExifInterface.TAG_EXPOSURE_TIME,
-                        ExifInterface.TAG_FLASH,
-                        ExifInterface.TAG_FOCAL_LENGTH,
-                        ExifInterface.TAG_GPS_ALTITUDE,
-                        ExifInterface.TAG_GPS_ALTITUDE_REF,
-                        ExifInterface.TAG_GPS_DATESTAMP,
-                        ExifInterface.TAG_GPS_LATITUDE,
-                        ExifInterface.TAG_GPS_LATITUDE_REF,
-                        ExifInterface.TAG_GPS_LONGITUDE,
-                        ExifInterface.TAG_GPS_LONGITUDE_REF,
-                        ExifInterface.TAG_GPS_PROCESSING_METHOD,
-                        ExifInterface.TAG_GPS_TIMESTAMP,
-                        ExifInterface.TAG_MAKE,
-                        ExifInterface.TAG_MODEL,
-                        ExifInterface.TAG_ORIENTATION,
-                        ExifInterface.TAG_SUBSEC_TIME,
-                        ExifInterface.TAG_WHITE_BALANCE
-                };
-
-        ExifInterface oldExif = new ExifInterface(originalPath);
-        ExifInterface newExif = new ExifInterface(newPath);
-
-        if (attributes.length > 0) {
-            for (int i = 0; i < attributes.length; i++) {
-                String value = oldExif.getAttribute(attributes[i]);
-                if (value != null)
-                    newExif.setAttribute(attributes[i], value);
-            }
-            newExif.saveAttributes();
-        }
-    }
-
-    public static byte[] readFile(File file) throws IOException {
-        // Open file
-        RandomAccessFile f = new RandomAccessFile(file, "r");
-        try {
-            // Get and check length
-            long longlength = f.length();
-            int length = (int) longlength;
-            if (length != longlength)
-                throw new IOException("File size >= 2 GB");
-            // Read file and return data
-            byte[] data = new byte[length];
-            f.readFully(data);
-            return data;
-        } finally {
-            f.close();
-        }
-    }
-
-    public static File getImageFolder() {
-        File imageFolder=null;
-        if (imageFolder==null) {
-            imageFolder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "TruxManager");
-            if (!imageFolder.exists()) {
-                if (!imageFolder.mkdirs()) {
-                    Log.e("TRUX", "Directory (" + imageFolder + ") dosen't exist and could not be created");
-                }
-            }
-        }
-        return imageFolder ;
+        return super.onKeyLongPress(keyCode, event);
     }
 
 
 }
 
 
-class MyUndoListener implements View.OnClickListener{
+class MyUndoListener implements View.OnClickListener {
     MainActivity activity;
     Order _order;
+
     public MyUndoListener(MainActivity mainActivity, Order ordre) {
-        activity=mainActivity;
-        _order=ordre;
+        activity = mainActivity;
+        _order = ordre;
 
     }
 
     @Override
     public void onClick(View v) {
 
-        activity.cleanPhoto=false;
+        activity.cleanPhoto = false;
         activity.handlerCleanPhotos.removeCallbacks(activity.runnableCleanPhotos);
-        activity.mySnackbar.setText("Suppression images annulé bon "+ _order.getOrderNumber());
+        activity.mySnackbar.setText("Suppression images annulé bon " + _order.getOrderNumber() + ".");
 
-        activity. mySnackbar.isShown();
+        activity.mySnackbar.isShown();
         // Code to undo the user's last action
     }
 }
@@ -2320,20 +1925,21 @@ class MyUndoListener1 implements View.OnClickListener {
     public void onClick(View v) {
         activity.clearPhoto = false;
         activity.handlerClearPhotos.removeCallbacks(activity.runnableClearPhotos);
-        activity.mySnackbar.setText("Suppression Annulée bon " + _order.getOrderNumber());
+        activity.mySnackbar.setText("Suppression Annulée bon " + _order.getOrderNumber() + ".");
         activity.mySnackbar.show();
         // Code to undo the user's last action
     }
 }
 
-class MyUndoListener2 implements View.OnClickListener{
+class MyUndoListener2 implements View.OnClickListener {
 
     MainActivity activity;
 
     public MyUndoListener2(MainActivity mainActivity) {
-        activity=mainActivity;
+        activity = mainActivity;
 
     }
+
 
     @Override
     public void onClick(View v) {
@@ -2344,6 +1950,28 @@ class MyUndoListener2 implements View.OnClickListener{
     }
 
 
+}
+
+class MyUndoListener3 implements View.OnClickListener {
+    MainActivity activity;
+    Order _order;
+
+    public MyUndoListener3(MainActivity mainActivity, Order ordre) {
+        activity = mainActivity;
+        _order = ordre;
+
+    }
+
+    @Override
+    public void onClick(View v) {
+
+        activity.cleanPhoto = false;
+        activity.handlerCleanPhotos.removeCallbacks(activity.runnableCleanPhotos);
+        activity.mySnackbar.setText("Suppression images annulé bon.");
+
+        activity.mySnackbar.isShown();
+        // Code to undo the user's last action
+    }
 }
 
 

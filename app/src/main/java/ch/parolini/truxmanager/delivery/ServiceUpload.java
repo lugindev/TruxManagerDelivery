@@ -1,8 +1,7 @@
 package ch.parolini.truxmanager.delivery;
 
+
 import android.annotation.TargetApi;
-import android.app.ActivityManager;
-import android.app.AlarmManager;
 import android.app.IntentService;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -13,88 +12,68 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.ExifInterface;
 import android.net.wifi.WifiManager;
 import android.os.Build;
-import android.os.Environment;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.StrictMode;
 import android.provider.Settings;
-import android.support.annotation.Nullable;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.NotificationManagerCompat;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.Menu;
 import android.widget.ListView;
 
-import org.apache.commons.net.PrintCommandListener;
-import org.apache.commons.net.ftp.FTP;
-import org.apache.commons.net.ftp.FTPClient;
-import org.apache.commons.net.ftp.FTPFile;
-import org.apache.commons.net.ftp.FTPSClient;
-import org.apache.commons.net.util.TrustManagerUtils;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpVersion;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.conn.ClientConnectionManager;
-import org.apache.http.conn.scheme.PlainSocketFactory;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.scheme.SchemeRegistry;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpParams;
-import org.apache.http.params.HttpProtocolParams;
-import org.apache.http.protocol.HTTP;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.RandomAccessFile;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.NetworkInterface;
-import java.security.KeyStore;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
+import java.util.logging.Handler;
 
 import ch.parolini.truxmanager.delivery.Manager.OrderManager;
-import ch.parolini.truxmanager.delivery.basededonnee.Requetes;
 import ch.parolini.truxmanager.delivery.model.Order;
 import ch.parolini.truxmanager.delivery.model.Picture;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class ServiceUpload extends IntentService {
 
     private static final Object LOCK = "";
-    private static final String CHANNEL_ID = "15" ;
-    private static final int NOTIFICATION_ID = 15 ;
-    private static final String NOTIFICATION_CHANNEL_ID ="15" ;
-    private static final CharSequence NOTIFICATION_CHANNEL_NAME ="notif" ;
-    private static final String NOTIFICATION_CHANNEL_DESC ="15" ;
-    private boolean serviceRun = true;
-    private ArrayList<String[]> images;
+    private static final String CHANNEL_ID = "15";
+    private static final int NOTIFICATION_ID = 15;
+    private static final String NOTIFICATION_CHANNEL_ID = "15";
+    private static final CharSequence NOTIFICATION_CHANNEL_NAME = "notif";
+    private static final String NOTIFICATION_CHANNEL_DESC = "15";
+    private static Bitmap bmp;
+    private final boolean serviceRun = true;
+    private List<String[]> lstimages = new ArrayList<>();
     // Static to avoid loosing the ref when screen orientation changes
     private static final int REQUEST_WRITE_STORAGE = 112;
     private static final int CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE = 100;
@@ -116,25 +95,24 @@ public class ServiceUpload extends IntentService {
 
     private Bitmap mBitmapToSave;
     private int REQUEST_CODE_CREATOR;
-    private boolean asPicture = false;
-    private boolean onclick = false;
+    private final boolean asPicture = false;
+    private final boolean onclick = false;
     private Menu mMenu;
-    private boolean mShowVisible = false;
+    private final boolean mShowVisible = false;
     public Snackbar mySnackbar;
     public Snackbar mySnackbar1;
     public boolean cleanPhoto = false;
-    private boolean isSelected = false;
+    private final boolean isSelected = false;
     public Handler handlerClearPhotos;
     public Handler handlerCleanPhotos;
     public Runnable runnableClearPhotos;
     public Runnable runnableCleanPhotos;
-    private String[] paramertes = new String[6];
-    private BroadcastReceiver mMessageReceiver = null;
-    ;
-    private int nbTotalOrdre = 0;
-    private boolean _blockSynchro = false;
-    private boolean snackBarInfo = true;
-    private BroadcastReceiver _receiverEtatDuTelephone = new BootLoadReceiver();
+    private final String[] paramertes = new String[6];
+    private final BroadcastReceiver mMessageReceiver = null;
+    private final int nbTotalOrdre = 0;
+    private final boolean _blockSynchro = false;
+    private final boolean snackBarInfo = true;
+    private final BroadcastReceiver _receiverEtatDuTelephone = new BootLoadReceiver();
     int PICK_IMAGE_MULTIPLE = 1;
     int PICK_IMAGE_MULTIPLE1 = 2;
     String imageEncoded;
@@ -144,43 +122,46 @@ public class ServiceUpload extends IntentService {
     private static String serverPassword;
     public static boolean passwordOK = false;
     private static InputStream inputStream;
-    private static String ftpHostName = "";
+    private static final String ftpHostName = "";
     private static String ftpUserName;
     private static String ftpPassword;
     private static MainActivity _activity;
-    private static Bitmap original = null;
-    private static Bitmap resized = null;
-    private static String _path;
     private static boolean _rename;
     private static boolean efface;
     private static boolean inFTP;
-    private static ModifiedFTPSClient con = null;
     private static String dateExif;
     private static String idExif;
 
 
     String imagePath;
 
-    private static int serverResponseCode = 0;
+    private static final int serverResponseCode = 0;
     ProgressDialog dialog = null;
 
     String upLoadServerUri = null;
-    private static String _urlJsonParamerte = "https://www.dsgsoft.ch/X3GR5T/Hv8bcFH9.json";
-    ;
-    private String Tag = "TransfertPhp";
-    private ArrayList<String[]> _listImages = new ArrayList<>();
-    private Requetes requetesBaseDeDonneeInterne;
+    private static final String _urlJsonParamerte = "https://www.luginbuhl.ch/X3GR5T/Hv8bcFH9.json";
+    private final String Tag = "TransfertPhp";
+    private final ArrayList<String[]> _listImages = new ArrayList<>();
     private Bitmap scaledBitmap;
     private Thread one;
     private int nbOrder = 0;
-    private int i = 1;
-    private String _adresse ="";
+    private final int i = 1;
+    private String _adresse = "";
+    private String extension;
+    private String extension1;
+    private String extension2;
+    private String tab;
     //private HttpClient client;
+    private OkHttpClient client;
+    private Response response;
+    private static final String FILE_PART_NAME = "file";
+    protected Map<String, String> headers;
+    private boolean locksend = false;
 
 
     public ServiceUpload() {
         super("ServiceUpdate");
-        _adresse = getmacAdress();
+
     }
 
     @Override
@@ -191,511 +172,171 @@ public class ServiceUpload extends IntentService {
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     @Override
     protected void onHandleIntent(@Nullable Intent intent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent notificationIntent = new Intent(this, ServiceUpload.class);
 
-        try {
+            PendingIntent pendingIntent = null;
+            if (Build.VERSION.SDK_INT >= 23) {
+                pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                Intent notificationIntent = new Intent(this, ServiceUpload.class);
-
-                PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
-
-                NotificationCompat.Builder builder = new NotificationCompat.Builder(this,NOTIFICATION_CHANNEL_ID)
-                        .setContentTitle("Trux manager")
-                        .setContentText("Envoi image(s) en cours")
-                        .setColor(getResources().getColor(R.color.colorPrimaryDark))
-                        .setContentIntent(pendingIntent);
-                Notification notification=builder.build();
-                if(Build.VERSION.SDK_INT>=26) {
-                    NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT);
-                    channel.setDescription(NOTIFICATION_CHANNEL_DESC);
-                    NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                    notificationManager.createNotificationChannel(channel);
-                }
-                startForeground(NOTIFICATION_ID, notification);
-
-            }else {
-
-                Intent notificationIntent = new Intent(this, ServiceUpload.class);
-
-                PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
-
-                Notification notification = new Notification.Builder(this)
-                        .setContentTitle("Trux manager")
-                        .setContentText("Envoi image(s) en cours")
-                        .setColor(getResources().getColor(R.color.colorPrimaryDark))
-
-                        .setOnlyAlertOnce(true)
-                        .setSmallIcon(R.drawable.truck_green)
-
-                        //.setContentIntent(pendingIntent)
-                        //.setTicker("Title")
-                        //.setPriority(Notification.PRIORITY_MIN)
-                        .build();
-
-
-                startForeground(15, notification);
-
-
-                String ns = Context.NOTIFICATION_SERVICE;
-                NotificationManager nMgr = (NotificationManager) getSystemService(ns);
-                nMgr.cancel(15);
-
-                Log.d("ServiceUpdateDemmarer", "Service démarré");
-
-
+            } else {
+                pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE);
             }
-        }catch (Exception e){
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                    .setContentTitle("Trux manager")
+                    .setContentText("Envoi image(s) en cours")
+                    .setColor(getResources().getColor(R.color.colorPrimaryDark))
+                    .setContentIntent(pendingIntent);
+            Notification notification = builder.build();
+            if (Build.VERSION.SDK_INT >= 26) {
+                NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT);
+                channel.setDescription(NOTIFICATION_CHANNEL_DESC);
+                NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                notificationManager.createNotificationChannel(channel);
+            }
+            startForeground(NOTIFICATION_ID, notification);
+
+        } else {
+
+            Intent notificationIntent = new Intent(this, ServiceUpload.class);
+
+            PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE);
+
+            Notification notification = new Notification.Builder(this)
+                    .setContentTitle("Trux manager")
+                    .setContentText("Envoi image(s) en cours")
+                    .setColor(getResources().getColor(R.color.colorPrimaryDark))
+
+                    .setOnlyAlertOnce(true)
+                    .setSmallIcon(R.drawable.truck_green)
+
+                    //.setContentIntent(pendingIntent)
+                    //.setTicker("Title")
+                    //.setPriority(Notification.PRIORITY_MIN)
+                    .build();
+            startForeground(15, notification);
+            String ns = Context.NOTIFICATION_SERVICE;
+            NotificationManager nMgr = (NotificationManager) getSystemService(ns);
+            nMgr.cancel(15);
+
+            ////Log.d("ServiceUpdateDemmarer", "Service démarré");
+
 
         }
-        while (serviceRun == true) {
-            try {
+
+
+        _adresse = getmacAdress();
+        client = new OkHttpClient();
+        locksend = false;
+        while (serviceRun) {
+            if (!locksend) {
+                locksend = true;
                 List<Order> orders = new ArrayList<>();
                 orders = OrderManager.getOrders();
-                Log.d("ServiceUpdate", "controle photo upload");
+                ////Log.d("ServiceUpdate", "controle photo upload");
+                VariablesGlobales._notSendOrders = true;
                 for (Order order : orders) {
-                    for (Picture picture : order.getPictures()) {
-
-                        requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
-                        requetesBaseDeDonneeInterne.open();
-                        images = new ArrayList<>();
-                        images = (ArrayList<String[]>) requetesBaseDeDonneeInterne.selectImagesByName(picture.getFile().getPath());
-                        if (images.size() == 0) {
-                            requetesBaseDeDonneeInterne.ajouterImage(picture.getFile().getPath());
-                            Log.i("notSend", "Image ajoutée " + picture.getFile().getPath());
-                        }
-                        for (String[] path : images) {
-                            Log.i("notSend", "Image envoyer " + picture.getFile().getPath());
-                            EmvoiImage(order.getOrderNumber(), path[1], order, path[0]);
-
+                    try {
+                        lstimages.clear();
+                        nbOrder = 0;
+                        lstimages = VariablesGlobales.requeteBd.selectImagesNumero(order.getOrderNumber());
+                        for (String[] s : lstimages) {
+                            File f = new File(s[1]);
+                            EmvoiImage(order.getOrderNumber(), f, order);
                         }
 
-
+                    } catch (Exception e) {
+                        //e.printStackTrace();
                     }
+
                 }
-
-            } catch (Exception e) {
-
-            } finally {
-                if(requetesBaseDeDonneeInterne != null) {
-                    requetesBaseDeDonneeInterne.close();
-                }
-
+                locksend = false;
             }
 
-            List<Order> orders1= OrderManager.getOrders();
-            nbOrder=0;
-            for (Order order : orders1) {
-
-                nbOrder = nbOrder + order.getPictureCount();
-            }
-
-            if (nbOrder == 0) {
-                Log.i("StopSelf", "StopSelf");
-                //NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
-                //notificationManager.cancel(15);
-                serviceRun = false;
-                stopSelf();
-                break;
-            }
-
-
-
-            /*synchronized (LOCK) {
+            synchronized (LOCK) {
                 try {
-                    LOCK.wait(20000); // LOCK is not held
+                    LOCK.wait(2000); // LOCK is not held
                 } catch (InterruptedException e) {
 
                 }
-            }*/
+            }
 
         }
     }
 
-    public synchronized boolean  EmvoiImage(String orderId, String file, Order order, String id) throws IOException {
-        original = null;
-        resized = null;
+    public synchronized boolean EmvoiImage(String orderId, File file, Order order) throws IOException {
         String _ServeurPath = "";
         boolean result = false;
-        try {
 
-            if (ftpHostName.equals("")) {
-                try {
-                    SelectionDesParametres();
-                } catch (Exception e) {
-
-                }
-            }
-
-            //ModifiedFTPSClient ftpClient=null;
-            //if (VariablesGlobales.ftpConnexion == null || !VariablesGlobales.ftpConnexion.isConnected()) {
-            try {
-                SelectionDesParametres();
-            } catch (NoClassDefFoundError e) {
-                Log.i("SelectionDesParametres", e.getMessage());
-            } catch (Exception e) {
-
-            }
-            con = new ModifiedFTPSClient(false);
-            con.addProtocolCommandListener(new PrintCommandListener(System.out));
-            con.setTrustManager(TrustManagerUtils.getAcceptAllTrustManager());
-            //InetAddress inetAddress = Inet4Address.getLocalHost();
-            try {
-                con.connect(ftpHostName,21);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            //}
-
-
-            if ( con.login(ftpUserName,ftpPassword)) {
-                con.enterLocalPassiveMode(); // important!
-                con.setFileType(FTP.BINARY_FILE_TYPE, FTP.BINARY_FILE_TYPE);
-                con.setFileTransferMode(FTP.BINARY_FILE_TYPE);
-            }
-
-            FTPFile[] files = new FTPFile[0];
-            FTPFile[] filesExist = new FTPFile[0];
-            Order order1 = new Order();
-            requetesBaseDeDonneeInterne = new Requetes(AppContext.getAppContext());
-            requetesBaseDeDonneeInterne.open();
-            String[] file2 = requetesBaseDeDonneeInterne.selectImagesByName(file).get(0);
-            file = file2[1];
-            File f = new File(file);
-            if (!f.exists()) {
-                Log.i("Inrouvable", "Fichier introuvable");
-                try {
-                    requetesBaseDeDonneeInterne.effacerIamgeById(id);
-                    Log.i("Inrouvable", "Fichier effacer bd");
-                    String date_photo = datePhoto(file);
-                    String date = "date";
-                    String heure = "heure";
-                    String[] files1 = file.split("/");
-                    String newPath = files1[0] + "/" + files1[1] + "/" + files1[2] + "/" + files1[3] + "/" + files1[4] + "/" + files1[5];
-                    String[] name = files1[6].split("_");
-                    String id_photo = name[1];
-                    if (!date_photo.equals("")) {
-                        date = date_photo.substring(0, 10).replace(":", "-");
-                        heure = date_photo.substring(11, date_photo.length());
-                        date_photo = date + "_" + heure;
-                        if (!orderId.equals("")) {
-                            renameFile(file, orderId + "_" + date_photo + "_" + _adresse + "_" +  "_" + id_photo + "_" +VariablesGlobales._versionCode + ".jpeg");
-                            _path = newPath + "/" + orderId + "_" + date_photo + "_" + _adresse + "_" +  "_" + id_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                            _ServeurPath = orderId + "_" + date_photo + "_" + _adresse + "_" +  "_" + id_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        } else {
-                            String orderId1 = file.split("/")[6];
-                            orderId = orderId1.split("_")[0];
-                            renameFile(file, orderId + "_" + date_photo + "_" +  "_" + id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg");
-                            _path = newPath + "/" + orderId + "_" + date_photo + "_" +  "_" + id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
-                            _ServeurPath = orderId + "_" + date_photo + "_" +  "_" + id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        }
-                    } else {
-                        SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd_HH:mm.SSS");//dd/MM/yyyy
-                        Date now = new Date();
-                        String strDate = sdfDate.format(now);
-                        date = strDate.substring(0, 10).replace(":", "-");
-                        heure = strDate.substring(11, strDate.length());
-                        date_photo = date + "_" + heure;
-                        if (!orderId.equals("")) {
-                            renameFile(file, orderId + "_" + strDate + "_" + id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg");
-                            _path = newPath + "/" + orderId + "_" + strDate + "_" +  id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
-                            _ServeurPath = orderId + "_" + date_photo + "_" +  id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        } else {
-                            String orderId1 = file.split("/")[6];
-                            orderId = orderId1.split("_")[0];
-                            renameFile(file, orderId + "_" + strDate + "_" +  id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg");
-                            _path = newPath + "/" + orderId + "_" + strDate + "_" +  id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
-                            _ServeurPath = orderId + "_" + date_photo + "_" +  id_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
-                        }
-
-                    }
-                    Log.i("Inrouvable", "_ServeurPath" + _ServeurPath);
-                    con.rename("/../photo_trux_manager/" + _ServeurPath, " /../photo_trux_manager/" + _ServeurPath.substring(0, _ServeurPath.length() - 5) + "e.jpeg");
-
-                } catch (Exception e) {
-                    Log.i("Inrouvable", "Fichier introuvable bd" + e.getMessage());
-                } finally {
-                    requetesBaseDeDonneeInterne.close();
-                }
-            }
-
-
-            Log.i("FileLength", String.valueOf(f.getName()));
-
-
-            String data = file;
-
-            byte[] b = null;
-
-
-            String compression = lectureDesParametres1("qualite_photos");
-
-
-            //FileInputStream in = new FileInputStream(new File(data));
-            //original = BitmapFactory.decodeStream(in);
-            original = decodeFileForDisplay(new File(data));
-            //original.eraseColor(Color.TRANSPARENT);
-            String date_photo = datePhoto(data);
-            String date = "date";
-            String heure = "heure";
-            String[] files1 = file.split("/");
-            String newPath = files1[0] + "/" + files1[1] + "/" + files1[2] + "/" + files1[3] + "/" + files1[4] + "/" + files1[5];
-            String[] name = files1[6].split("_");
-            String id_photo = name[1];
-            if (!date_photo.equals("")) {
-                date = date_photo.substring(0, 10).replace(":", "-");
-                heure = date_photo.substring(11, date_photo.length());
-                date_photo = date + "_" + heure;
-                if (!orderId.equals("")) {
-                    renameFile(file, orderId + "_" + date_photo +  "_" + id_photo  + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg");
-                    _path = newPath + "/" + orderId + "_" + date_photo + "_" + id_photo  + "_" + _adresse +   "_"  + VariablesGlobales._versionCode + ".jpeg";
-                    _ServeurPath = orderId + "_" + date_photo + "_" + id_photo + "_" + _adresse + "_"   + VariablesGlobales._versionCode + ".jpeg";
-                } else {
-                    String orderId1 = file.split("/")[6];
-                    orderId = orderId1.split("_")[0];
-                    renameFile(file, orderId + "_" + date_photo +  "_" + id_photo  + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg");
-                    _path = newPath + "/" + orderId + "_" + date_photo + "_" + id_photo  + "_" + _adresse +   "_"  + VariablesGlobales._versionCode + ".jpeg";
-                    _ServeurPath = orderId + "_" + date_photo + "_" + id_photo + "_" + _adresse + "_"   + VariablesGlobales._versionCode + ".jpeg";
-                }
-            } else {
-                SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd_HH:mm.SSS");//dd/MM/yyyy
-                Date now = new Date();
-                String strDate = sdfDate.format(now);
-                date = strDate.substring(0, 10).replace(":", "-");
-                heure = strDate.substring(11, strDate.length());
-                date_photo = date + "_" + heure;
-                if (!orderId.equals("")) {
-                    renameFile(file, orderId + "_" + strDate + "_" + _adresse +  "_" + id_photo + "_" + VariablesGlobales._versionCode + ".jpeg");
-                    _path = newPath + "/" + orderId + "_" + strDate + "_" + _adresse +  "_" + id_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    _ServeurPath = orderId + "_" + date_photo + "_" + _adresse +  "_" + id_photo + "_" + VariablesGlobales._versionCode + ".jpeg";
-                } else {
-                    String orderId1 = file.split("/")[6];
-                    orderId = orderId1.split("_")[0];
-                    renameFile(file, orderId + "_" + strDate + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg");
-                    _path = newPath + "/" + orderId + "_" + strDate + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
-                    _ServeurPath = orderId + "_" + date_photo + "_" + _adresse + "_" + VariablesGlobales._versionCode + ".jpeg";
-                }
-            }
-
-            Log.i("FileName", file);
-            Log.i("FIleName", "_path" + _path);
-            String tempFilePath = getTempFilePath(_path);
-            File tempFile = new File(tempFilePath);
-            //filesExist = con.listFiles("/../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5) +"f.jpeg");
-
-                /*for (FTPFile file1 : filesExist) {
-                    Log.d("UploadTrue",file1.getName());
-                    File target;
-                    File target1;
-                    String[] files2 = _path.split("/");
-                    try {
-                        requetesBaseDeDonneeInterne  = new Requetes(AppContext.getAppContext());
-                        requetesBaseDeDonneeInterne.open();
-                        requetesBaseDeDonneeInterne.effacerIamgeById(id);
-
-                        target = new File(file);
-                        target1 = new File(file.substring(0, file.length() - 4) + "_preview.jpeg");
-                        if (target1.exists() && target1.isFile() && target1.canWrite()) {
-                            target1.delete();
-                            Log.d("d_file", "" + target1.getName());
-                        }
-                        if (target.exists() && target.isFile() && target.canWrite()) {
-                            target.delete();
-                            Log.d("d_file", "" + target.getName());
-                        }
-                        order.deleteNumbre();
-                        notifiyOrderSent(order);
-
-
-                    } catch (Exception e) {
-
-                    } finally {
-                    }
-
-                    return true;
-                }*/
-
-
-            //ByteArrayOutputStream out = new ByteArrayOutputStream();
-
-
-// Get stream from temp (exif loaded) file
-
-
-
-
-            /*if(compression.equals("")) {
-                original.compress(Bitmap.CompressFormat.JPEG, Integer.parseInt(compression), out);
-            }
-            else {
-                original.compress(Bitmap.CompressFormat.JPEG, 100, out);
-            }*/
-
-            files = con.listFiles("/../photo_trux_manager/" + _ServeurPath);
-
-            long fileSizeInBytes = 0;
-            long fileSizeInKB = 0;
-
-
-            for (FTPFile file1 : files) {
-
-                // Get file from file name
-                //File file2 = new File(file.getPath());
-                inFTP = true;
-
-                // Convert the bytes to Kilobytes (1 KB = 1024 Bytes)
-                fileSizeInKB = file1.getSize();
-                byte[] byteFile = readFile(tempFile);
-                if (fileSizeInBytes == fileSizeInKB || fileSizeInKB > fileSizeInBytes) {
-
-
-                }
-
-            }
-            //fis.read(out.toByteArray());
-
-            // Log.i("QualiteEnvoi", lectureDesParametres1("qualite_photos"));
-
-            // Get length of file in bytes
-            //fileSizeInBytes = file.length();
-            // Convert the bytes to Kilobytes (1 KB = 1024 Bytes)
-
-
-            //b = fis1.
-
-// Remove the temp file
-
-// Finalize
-
-
-// Get stream from temp (exif loaded) file
-
-// Remove the temp file
-            //boolean deleted = tempFilePath.delete();
-
-// Finalize
-
-            /*if (b == null) {
-                b = out.toByteArray();
-            }*/
-
-
-            try {
-                FileOutputStream out = new FileOutputStream(tempFilePath);
-                original.compress(Bitmap.CompressFormat.JPEG, Integer.parseInt(compression), out);
-                copyExif(file, tempFilePath);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-// Get stream from temp (exif loaded) file
-
-            byte[] byteFile = readFile(tempFile);
-            ByteArrayInputStream fis1 = new ByteArrayInputStream(byteFile);
-
-// Remove the temp file
-
-
-// Finalize
-            int fileSize = byteFile.length;
-            con.setRestartOffset(fileSizeInKB);
-            //result = con.storeFile("/../photo_trux_manager/" + _path, new ByteArrayInputStream(b));
-
-            result = con.appendFile("/../photo_trux_manager/" + _ServeurPath, fis1);
-
-
-            if (result == true) {
-                con.rename("/../photo_trux_manager/" + _ServeurPath, " /../photo_trux_manager/" + _ServeurPath.substring(0, _ServeurPath.length() - 5) + "f.jpeg");
-                filesExist = con.listFiles("/../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5)+"f.jpeg");
-
-                for (FTPFile file1 : filesExist) {
-                    Log.d("UploadTrue",file1.getName());
-                    try {
-                        requetesBaseDeDonneeInterne  = new Requetes(AppContext.getAppContext());
-                        requetesBaseDeDonneeInterne.open();
-                        requetesBaseDeDonneeInterne.effacerIamgeById(id);
-
-                        File target;
-                        File target1;
-                        String[] files2 = _path.split("/");
-
-                        target = new File(file);
-                        target1 = new File(file.substring(0, file.length() - 4) + "_preview.jpeg");
-                        if (target1.exists() && target1.isFile() && target1.canWrite()) {
-                            target1.delete();
-                            Log.d("d_file", "" + target1.getName());
-                        }
-                        if (target.exists() && target.isFile() && target.canWrite()) {
-                            target.delete();
-                            Log.d("d_file", "" + target.getName());
-                        }
-                        order.deleteNumbre();
-                        notifiyOrderSent(order);
-
-
-                    } catch (Exception e) {
-
-                    } finally {
-                    }
-
-                    if (original != null && original.isRecycled() == false) {
-                        original.recycle();
-                    }
-                    if (resized != null && resized.isRecycled() == false) {
-                        resized.recycle();
-                    }
-
-
-                    return true;
-                }
-                //boolean deleted = tempFile.delete();
-            }
-
-            //filesExist = con.listFiles("/../photo_trux_manager/" + _ServeurPath.substring(0,_ServeurPath.length()-5)+"f.jpeg");
-
-
-           /* target = new File(getImageFolder()+"/"+files2[1]);
-            target1 = new File(getImageFolder()+"/"+files2[1].substring(0, (getImageFolder()+"/"+files2[1]).length() - 4) + "_preview.jpeg");
-            if(filesExist.length!=0) {
-                if (target1.exists() && target1.isFile() && target1.canWrite()) {
-                    target1.delete();
-                    Log.d("Files", "Delete" + target1.getName());
-                }
-            }
-
-            if (lectureDesParametres1("action_fichier").equals("effacer") && filesExist.length!=0) {
-                if (target.exists() && target.isFile() && target.canWrite()) {
-                    target.delete();
-                    Log.d("Files", "Delete" + target.getName());
-                }
-            }*/
-
-
-            Log.i("BaseDeDonnee", result + "_" + _path);
-
-
-
-        } catch (Exception e) {
-            Log.i("resultat", false + "_" + e.getMessage() + "_" + _path);
-            con.logout();
-            con.disconnect();
-            con=null;
-            //return false;
-        } finally {
-            if (con != null) {
-                con.logout();
-                con.disconnect();
+        if (VariablesGlobales.message.equals("")) {
+            VariablesGlobales.message = "_";
+        } else {
+            if (VariablesGlobales.message.charAt(0) != '_') {
+                VariablesGlobales.message = "_" + VariablesGlobales.message + "_";
             }
         }
-        return result;
+
+        //extension = ".mp4";
+        if (file.getName().contains(".")) {
+
+            extension = file.getName().substring(file.getName().length() - 4);
+        } else {
+
+        }
+        File f = file;
+        if (fileExists(this, f)) {
+                String date_photo = "";
+                //print the original last modified date
+                SimpleDateFormat sdf = new SimpleDateFormat("YYYY-MM-dd_HH:mm:ss");
+                date_photo = sdf.format(f.lastModified());
+                String[] files1 = file.getName().split("/");
+                String[] name = files1[files1.length - 1].split("_");
+                String id_photo = "0";
+                try {
+                    Long tsLong = System.currentTimeMillis() / 10;
+                    String timeStamp = tsLong.toString();
+                    id_photo = timeStamp;
+                } catch (Exception e) {
+                }
+                String strDate = date_photo;
+                if (strDate.equals("")) {
+                    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd_HH:mm:ss");//dd/MM/yyyy
+                    Date now = new Date();
+                    strDate = sdfDate.format(now);
+                }
+                if (orderId.equals("")) {
+                    String orderId1 = file.getName().split("/")[6];
+                    orderId = orderId1.split("_")[0];
+                }
+                _ServeurPath = orderId + "_" + strDate + "_" + id_photo + "_" + VariablesGlobales._versionCode + "_" + "f" + extension;
+                //upload("https://www.luginbuhl.ch/pesages/erik-test2.jpg", f, id, order);
+                doFileUpload("https://www.luginbuhl.ch/upload-photo_trux_manager.php", f, order, _ServeurPath);
+
+        } else {
+            f.delete();
+            VariablesGlobales.requeteBd.effacerIamgeByName(file.getPath());
+            try {
+                order.deleteNumbre();
+                notifiyOrderSent(order);
+            } catch (IndexOutOfBoundsException e) {
+                //e.printStackTrace();
+            }
+            _activity.updateOrderListView();
+        }
+        return true;
     }
 
-    private void notifiyOrderSent(Order order) {
+    public boolean fileExists(Context context, File file) {
+        //File file = AppContext.getAppContext().getFileStreamPath(filename);
+        return file != null && file.exists();
+    }
+
+
+    private static void notifiyOrderSent(Order order) {
         Intent intent = new Intent("onOrderSent");
         intent.putExtra("order", order);
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+        LocalBroadcastManager.getInstance(AppContext.getAppContext()).sendBroadcast(intent);
     }
-
 
 
     private static String lectureDesParametres1(String key) {
@@ -706,12 +347,64 @@ public class ServiceUpload extends IntentService {
 
     }
 
-    public  String getmacAdress() {
-        try {
+    /*public  String getmacAdress() {
+
             WifiManager _wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
             if (_wifiManager.isWifiEnabled() == false) {
                 _wifiManager.setWifiEnabled(true);
                 synchronized(LOCK) {
+                    try {
+                        LOCK.wait(2000); // LOCK is not held
+                    } catch (InterruptedException e) {
+
+                    }
+                }
+            }
+        List<NetworkInterface> all = null;
+        try {
+            all = Collections.list(NetworkInterface.getNetworkInterfaces());
+        } catch (SocketException e) {
+            //e.printStackTrace();
+        }
+        for (NetworkInterface nif : all) {
+                if (!nif.getName().equalsIgnoreCase("wlan0")) continue;
+
+            byte[] macBytes = new byte[0];
+            try {
+                macBytes = nif.getHardwareAddress();
+            } catch (SocketException e) {
+                //e.printStackTrace();
+            }
+            if (macBytes == null) {
+                    return "";
+                }
+
+                StringBuilder res1 = new StringBuilder();
+                for (byte b : macBytes) {
+                    //res1.append(Integer.toHexString(b & 0xFF) + ":");
+                    res1.append(String.format("%02X:",b));
+                }
+
+                if (res1.length() > 0) {
+                    res1.deleteCharAt(res1.length() - 1);
+                }
+                return res1.toString();
+            }
+
+
+        return "";
+    }*/
+
+     /*public String getmacAdress() throws ParseException {
+        return LectureFichierParametres()[0];
+     }*/
+
+    public String getmacAdress() {
+        try {
+            WifiManager _wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+            if (!_wifiManager.isWifiEnabled()) {
+                _wifiManager.setWifiEnabled(true);
+                synchronized (LOCK) {
                     try {
                         LOCK.wait(2000); // LOCK is not held
                     } catch (InterruptedException e) {
@@ -731,7 +424,7 @@ public class ServiceUpload extends IntentService {
                 StringBuilder res1 = new StringBuilder();
                 for (byte b : macBytes) {
                     //res1.append(Integer.toHexString(b & 0xFF) + ":");
-                    res1.append(String.format("%02X:",b));
+                    res1.append(String.format("%02X:", b));
                 }
 
                 if (res1.length() > 0) {
@@ -745,6 +438,79 @@ public class ServiceUpload extends IntentService {
         return "";
     }
 
+
+    /*public void EcrtiureFichierParametres(String data) throws ParseException {
+        File path = getExternalFilesDir(null).getAbsolutePath();
+
+        File file = new File(path, ".parametres_cle.txt");
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            }  catch (Exception e) { ////Log.i("simulation", e.getMessage() + "10");
+                ////Log.i("simulation", e.getMessage());
+
+            }
+        }
+        try {
+            FileWriter fstream = new FileWriter(file, true);
+            BufferedWriter fbw = new BufferedWriter(fstream);
+            fbw.write(data);
+            fbw.newLine();
+            fbw.close();
+        }  catch (Exception e) { ////Log.i("simulation", e.getMessage() + "11");
+            ////Log.i("simulation", e.getMessage());
+
+        }
+
+    }*/
+
+    public String[] LectureFichierParametres() {
+        File path = getExternalFilesDir(null);
+        String[] tab = new String[1];
+        final File file = new File(path, ".parametres_cle.txt");
+        /*if (!file.exists()) {
+            try {
+                file.createNewFile();
+                EcrtiureFichierParametres(UUID.randomUUID().toString().toUpperCase().substring(0,2)+":"+
+                        UUID.randomUUID().toString().toUpperCase().substring(3,5)+":"+
+                        UUID.randomUUID().toString().toUpperCase().substring(6,8)+":"+
+                        UUID.randomUUID().toString().toUpperCase().substring(9,11)+":"+
+                        UUID.randomUUID().toString().toUpperCase().substring(14,16)+":"+
+                        UUID.randomUUID().toString().toUpperCase().substring(20,22));
+            }  catch (Exception e) { ////Log.i("simulation", e.getMessage());
+                ////Log.i("simulation", e.getMessage());
+
+            }
+        }*/
+
+        try {
+            FileInputStream inputStream = new FileInputStream(file);
+
+
+            if (inputStream != null) {
+                InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+                BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+                String receiveString = "";
+                StringBuilder stringBuilder = new StringBuilder();
+
+                while ((receiveString = bufferedReader.readLine()) != null) {
+                    stringBuilder.append(receiveString);
+                    tab = receiveString.split(";");
+
+                }
+
+                inputStream.close();
+
+            }
+        } catch (FileNotFoundException e) {
+            //e.printStackTrace();
+        } catch (IOException e) {
+            //e.printStackTrace();
+        }
+        return tab;
+
+    }
+
     String getDeviceID() {
 
         String device_unique_id = Settings.Secure.getString(AppContext.getAppContext().getContentResolver(),
@@ -754,17 +520,14 @@ public class ServiceUpload extends IntentService {
     }
 
 
-
     public static String insertPeriodically(
-            String text, String insert, int period)
-    {
+            String text, String insert, int period) {
         StringBuilder builder = new StringBuilder(
-                text.length() + insert.length() * (text.length()/period)+1);
+                text.length() + insert.length() * (text.length() / period) + 1);
 
         int index = 0;
         String prefix = "";
-        while (index < text.length())
-        {
+        while (index < text.length()) {
             // Don't put the insert in the very first iteration.
             // This is easier than appending it *after* each substring
             builder.append(prefix);
@@ -787,15 +550,15 @@ public class ServiceUpload extends IntentService {
                 if (intf != null) {
                     dateExif = intf.getAttribute(ExifInterface.TAG_DATETIME);
                     //intf.get(ExifInterface.)
-                    //Log.i("Dated : " + dateString); //Dispaly dateString. You can do/use it your own way
+                    //////Log.i("Dated : " + dateString); //Dispaly dateString. You can do/use it your own way
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
 
 
                 if (intf == null) {
                     //lastModDate = new Date(file.lastModified());
-                    //Log.i("Dated : " + lastModDate.toString());//Dispaly lastModDate. You can do/use it your own way
+                    //////Log.i("Dated : " + lastModDate.toString());//Dispaly lastModDate. You can do/use it your own way
                 }
             }
             if (dateExif == null) {
@@ -810,111 +573,138 @@ public class ServiceUpload extends IntentService {
         return filePath;
     }
 
-    public static void SelectionDesParametres() throws Exception {
+    /*public static void SelectionDesParametres() throws Exception {
+
+        String jsonStr = null;
         try {
-            String jsonStr = null;
-            try {
-                jsonStr = getJson(GetData(_urlJsonParamerte));
-            } catch (IOException e) {
+            jsonStr = getJson(GetData(_urlJsonParamerte));
+        } catch (IOException e) {
 
-            }
-            if (jsonStr != null) {
-                try {
-                    JSONObject json = new JSONObject(jsonStr);
-                    JSONArray jArray = json.getJSONArray("donnees");
-
-                    for (int j = 0; j < jArray.length(); j++) {
-                        JSONObject values = jArray.getJSONObject(j);
-                        ftpHostName = values.getString("fT6RqE7");
-                        ftpUserName = values.getString("M6Hg7ZQ");
-                        ftpPassword = values.getString("K9Jd0s4");
-                    }
-                } catch (final JSONException e) {
-                    String s;
-                }
-            }
-        } catch (Exception e) {
-            String s;
         }
-    }
+        if (jsonStr != null) {
+            try {
+                JSONObject json = new JSONObject(jsonStr);
+                JSONArray jArray = json.getJSONArray("donnees");
 
-    public static HttpResponse GetData(String url) throws IOException {
+                for (int j = 0; j < jArray.length(); j++) {
+                    JSONObject values = jArray.getJSONObject(j);
+                    ftpHostName = values.getString("fT6RqE7");
+                    ftpUserName = values.getString("M6Hg7ZQ");
+                    ftpPassword = values.getString("K9Jd0s4");
+                }
+            } catch (final JSONException e) {
+                String s;
+            }
+        }
+
+        String s;
+
+    }*/
+
+    /*public static HttpResponse GetData(String url) throws IOException {
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 
         StrictMode.setThreadPolicy(policy);
         String url1 = url;
         HttpPost httppost = new HttpPost(url1);
-        return getNewHttpClient1().execute(httppost);
+        return (HttpResponse) getNewHttpClient1().execute(httppost);
 
     }
 
     private static String getJson(HttpResponse httpClient) {
         StringBuilder sb = new StringBuilder();
+
+        HttpGet getRequest = new HttpGet(_urlJsonParamerte);
+        getRequest.addHeader("accept", "application/json");
+
+        HttpResponse response = httpClient;
+
+        String output = "";
+        BufferedReader br = null;
         try {
-            HttpGet getRequest = new HttpGet(_urlJsonParamerte);
-            getRequest.addHeader("accept", "application/json");
+            br = new BufferedReader(new InputStreamReader((response.getEntity().getContent())));
+        } catch (IOException e) {
+            //e.printStackTrace();
+        }
+        while (true) {
+            try {
+                if (!((output = br.readLine()) != null)) break;
 
-            HttpResponse response = httpClient;
-
-            String output;
-            BufferedReader br = new BufferedReader(new InputStreamReader((response.getEntity().getContent())));
-            while ((output = br.readLine()) != null) {
                 sb.append(output);
+
+            } catch (IOException e) {
+                //e.printStackTrace();
             }
-        } catch (Exception e) {
-            String s;
         }
         return sb.toString();
     }
 
     public static DefaultHttpClient getNewHttpClient1() {
+
+        KeyStore trustStore = null;
         try {
-            KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-            trustStore.load(null, null);
-
-            HttpParams params = new BasicHttpParams();
-            HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
-            HttpProtocolParams.setContentCharset(params, HTTP.UTF_8);
-
-            SchemeRegistry registry = new SchemeRegistry();
-            registry.register(new Scheme("http", PlainSocketFactory
-                    .getSocketFactory(), 80));
-            registry.register(new Scheme("https", new EasySSLSocketFactory(), 443));
-
-            ClientConnectionManager ccm = new ThreadSafeClientConnManager(params, registry);
-            return new DefaultHttpClient(ccm, params);
-        } catch (Exception e) {
-            return new DefaultHttpClient();
+            trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+        } catch (KeyStoreException e) {
+            //e.printStackTrace();
         }
-    }
-
-    public static Bitmap decodeFileForDisplay(File f){
-
         try {
-            //Decode image size
-            BitmapFactory.Options o = new BitmapFactory.Options();
-            //o.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(new FileInputStream(f),null,o);
-            DisplayMetrics metrics = AppContext.getAppContext().getResources().getDisplayMetrics();
+            trustStore.load(null, null);
+        } catch (CertificateException e) {
+            //e.printStackTrace();
+        } catch (IOException e) {
+            //e.printStackTrace();
+        } catch (NoSuchAlgorithmException e) {
+            //e.printStackTrace();
+        }
 
-            //The new size we want to scale to
-            //final int REQUIRED_SIZE=180;
+        HttpParams params = (HttpParams) new BasicHttpParams();
+        HttpProtocolParams.setVersion(params, (ProtocolVersion) HttpVersion.HTTP_1_1);
+        HttpProtocolParams.setContentCharset(params, HTTP.UTF_8);
 
-            // int scaleW =  o.outWidth / metrics.widthPixels;
-            //int scaleH =  o.outHeight / metrics.heightPixels;
-            //int scale = Math.max(scaleW,scaleH);
-            //Log.d("CCBitmapUtils", "Scale Factor:"+scale);
-            //Find the correct scale value. It should be the power of 2.
+        SchemeRegistry registry = new SchemeRegistry();
+        registry.register(new Scheme("http", PlainSocketFactory
+                .getSocketFactory(), 80));
+        registry.register(new Scheme("https", (SocketFactory) new EasySSLSocketFactory(), 443));
 
-            //Decode with inSampleSize
-            BitmapFactory.Options o2 = new BitmapFactory.Options();
-            //o2.inSampleSize=scale;
-            Bitmap scaledPhoto = BitmapFactory.decodeStream(new FileInputStream(f), null, o2);
-            return scaledPhoto;
+        ClientConnectionManager ccm = new ThreadSafeClientConnManager((HttpParams) params, registry);
+        return new DefaultHttpClient(ccm, (HttpParams) params);
 
-        } catch (FileNotFoundException e) {}
-        return null;
+    }*/
+
+    public static Bitmap decodeFileForDisplay(File f) {
+
+
+        //Decode image size
+        BitmapFactory.Options o = new BitmapFactory.Options();
+        //o.inJustDecodeBounds = true;
+        try {
+            BitmapFactory.decodeStream(new FileInputStream(f), null, o);
+        } catch (FileNotFoundException e) {
+            //e.printStackTrace();
+        }
+        DisplayMetrics metrics = AppContext.getAppContext().getResources().getDisplayMetrics();
+
+        //The new size we want to scale to
+        //final int REQUIRED_SIZE=180;
+
+        // int scaleW =  o.outWidth / metrics.widthPixels;
+        //int scaleH =  o.outHeight / metrics.heightPixels;
+        //int scale = Math.max(scaleW,scaleH);
+        //////Log.d("CCBitmapUtils", "Scale Factor:"+scale);
+        //Find the correct scale value. It should be the power of 2.
+
+        //Decode with inSampleSize
+        BitmapFactory.Options o2 = new BitmapFactory.Options();
+        //o2.inSampleSize=scale;
+        Bitmap scaledPhoto = null;
+        try {
+            scaledPhoto = BitmapFactory.decodeStream(new FileInputStream(f), null, o2);
+        } catch (FileNotFoundException e) {
+            //e.printStackTrace();
+        }
+        return scaledPhoto;
+
     }
 
     public static void renameFile(String oldFile, String newFile) throws IOException {
@@ -935,11 +725,10 @@ public class ServiceUpload extends IntentService {
         }
 
 
-
     }
 
     private String getTempFilePath(String filename) {
-        String temp = "_temp";
+        String temp = "temp";
         int dot = filename.lastIndexOf(".");
         String ext = filename.substring(dot + 1);
 
@@ -980,7 +769,6 @@ public class ServiceUpload extends IntentService {
                 };
 
 
-
         ExifInterface oldExif = new ExifInterface(originalPath);
         ExifInterface newExif = new ExifInterface(newPath);
 
@@ -995,9 +783,14 @@ public class ServiceUpload extends IntentService {
     }
 
     public static byte[] readFile(File file) throws IOException {
+        byte[] bytesArray = new byte[(int) file.length()];
+
+        FileInputStream fis = new FileInputStream(file);
+        fis.read(bytesArray); //read file into bytes[]
+        fis.close();
         // Open file
-        RandomAccessFile f = new RandomAccessFile(file, "r");
-        try {
+        /*RandomAccessFile f = new RandomAccessFile(file, "r");
+
             // Get and check length
             long longlength = f.length();
             int length = (int) longlength;
@@ -1006,34 +799,192 @@ public class ServiceUpload extends IntentService {
             // Read file and return data
             byte[] data = new byte[length];
             f.readFully(data);
-            return data;
-        } finally {
-            f.close();
+        f.close();
+            return data;*/
+        return bytesArray;
+    }
+
+    public static Boolean uploadFile(String serverURL, File file, String id, Order order) {
+        try {
+            OkHttpClient client = new OkHttpClient();
+            RequestBody requestBody = new MultipartBody.Builder().setType(MultipartBody.FORM)
+                    .addFormDataPart("file", file.getName(),
+                            RequestBody.create(MediaType.parse("image/jpg"), file))
+                    .addFormDataPart("some-field", "some-value")
+                    .build();
+
+            Request request = new Request.Builder()
+                    .url(serverURL)
+                    .post(requestBody)
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+
+                @Override
+                public void onFailure(final Call call, final IOException e) {
+                    // Handle the error
+                }
+
+                @Override
+                public void onResponse(final Call call, final Response response) throws IOException {
+                    if (!response.isSuccessful()) {
+                        // Handle the error
+                    }
+                    // Upload successful
+                }
+            });
+
+            return true;
+        } catch (Exception ex) {
+            // Handle the error
+        }
+        return false;
+    }
+
+    private void doFileUpload(String url1, File file, Order order, String _ServeurPath) {
+        HttpURLConnection conn = null;
+        DataOutputStream dos = null;
+        DataInputStream inStream = null;
+        String exsistingFileName = file.getPath();
+        // Is this the place are you doing something wrong.
+        String lineEnd = "\r\n";
+        String twoHyphens = "--";
+        String boundary = "*****";
+        int bytesRead, bytesAvailable, bufferSize;
+        byte[] buffer;
+        int maxBufferSize = 1024 * 1024;
+        String urlString = url1;
+        try {
+            ////Log.i("Upload","Inside second Method");
+            FileInputStream fileInputStream = new FileInputStream(new File(exsistingFileName));
+            URL url = new URL(urlString);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setDoInput(true);
+            // Allow Outputs
+            conn.setDoOutput(true);
+            // Don't use a cached copy.
+            conn.setUseCaches(false);
+            // Use a post method.
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Connection", "Keep-Alive");
+            conn.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
+            dos = new DataOutputStream(conn.getOutputStream());
+            dos.writeBytes(twoHyphens + boundary + lineEnd);
+            dos.writeBytes("Content-Disposition: form-data; name=\"uploadedfile\";filename=\"" + _ServeurPath + "\"" + lineEnd);
+            dos.writeBytes(lineEnd);
+            ////Log.i("Upload","Headers are written");
+            bytesAvailable = fileInputStream.available();
+            bufferSize = Math.min(bytesAvailable, maxBufferSize);
+            buffer = new byte[bufferSize];
+            bytesRead = fileInputStream.read(buffer, 0, bufferSize);
+            while (bytesRead > 0) {
+                dos.write(buffer, 0, bufferSize);
+                bytesAvailable = fileInputStream.available();
+                bufferSize = Math.min(bytesAvailable, maxBufferSize);
+                bytesRead = fileInputStream.read(buffer, 0, bufferSize);
+            }
+            dos.writeBytes(lineEnd);
+            dos.writeBytes(twoHyphens + boundary + twoHyphens + lineEnd);
+            BufferedReader br = null;
+            boolean uploadresult = false;
+            if (conn.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String strCurrentLine;
+                while ((strCurrentLine = br.readLine()) != null) {
+                    uploadresult = strCurrentLine.equals("true");
+                }
+            } else {
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                String strCurrentLine;
+                while ((strCurrentLine = br.readLine()) != null) {
+                    uploadresult = strCurrentLine.equals("true");
+                }
+            }
+            //boolean existe =  exists("https://www.luginbuhl.ch/pesages/" + _ServeurPath);
+            if (uploadresult == true) {
+                VariablesGlobales.requeteBd.effacerIamgeByName(file.getPath());
+                try {
+                    order.deleteNumbre();
+                    notifiyOrderSent(order);
+                } catch (IndexOutOfBoundsException e) {
+                    //e.printStackTrace();
+                }
+                _activity.updateOrderListView();
+            }
+            fileInputStream.close();
+            dos.flush();
+            dos.close();
+        } catch (MalformedURLException ex) {
+            ////Log.i("Upload", "error: " + ex.getMessage(), ex);
+        } catch (IOException ioe) {
+            ////Log.i("Upload", "error: " + ioe.getMessage(), ioe);
+        }
+
+
+    }
+
+    public static boolean exists(String URLName) {
+        try {
+            HttpURLConnection.setFollowRedirects(false);
+            // note : you may also need
+            //        HttpURLConnection.setInstanceFollowRedirects(false)
+            HttpURLConnection con =
+                    (HttpURLConnection) new URL(URLName).openConnection();
+            con.setRequestMethod("HEAD");
+            boolean b = (con.getResponseCode() == HttpURLConnection.HTTP_OK);
+            return (con.getResponseCode() == HttpURLConnection.HTTP_OK);
+        } catch (Exception e) {
+            //e.printStackTrace();
+            return false;
         }
     }
 
-    public static File getImageFolder() {
-        File imageFolder=null;
-        if (imageFolder==null) {
-            imageFolder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "TruxManager");
-            if (!imageFolder.exists()) {
-                if (!imageFolder.mkdirs()) {
-                    Log.e("TRUX", "Directory (" + imageFolder + ") dosen't exist and could not be created");
-                }
-            }
+    /*public CustomTrust() {
+        X509TrustManager trustManager;
+        SSLSocketFactory sslSocketFactory;
+        try {
+            trustManager = trustManagerForCertificates(trustedCertificatesInputStream());
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, new TrustManager[] { trustManager }, null);
+            sslSocketFactory = sslContext.getSocketFactory();
+        } catch (GeneralSecurityException e) {
+            throw new RuntimeException(e);
         }
-        return imageFolder ;
+
+        client = new OkHttpClient.Builder()
+                .sslSocketFactory(sslSocketFactory, trustManager)
+                .build();
     }
+
+    public void run() throws Exception {
+        Request request = new Request.Builder()
+                .url("https://publicobject.com/helloworld.txt")
+                .build();
+
+        Response response = client.newCall(request).execute();
+        System.out.println(response.body().string());
+    }
+
+    public InputStream trustedCertificatesInputStream() {
+    // Full source omitted. See sample.
+        return null;
+    }
+
+    public SSLContext sslContextForTrustedCertificates(InputStream in) {
+     // Full source omitted. See sample.
+        return null;
+    }*/
+
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        stopSelf();
     }
 
     @Override
     public boolean stopService(Intent name) {
         return super.stopService(name);
     }
+
 }
-
-

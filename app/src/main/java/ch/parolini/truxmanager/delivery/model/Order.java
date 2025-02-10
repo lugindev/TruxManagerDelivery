@@ -3,7 +3,6 @@ package ch.parolini.truxmanager.delivery.model;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -15,7 +14,6 @@ import java.util.Date;
 import java.util.List;
 
 import ch.parolini.truxmanager.delivery.AppContext;
-import ch.parolini.truxmanager.delivery.Manager.OrderManager;
 
 
 /**
@@ -66,7 +64,7 @@ public class Order implements Serializable{
     private Bitmap builThumbFromFile(File imgFile) {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         Bitmap bitmap = BitmapFactory.decodeFile(imgFile.getAbsolutePath());
-        //bitmap.compress(Bitmap.CompressFormat.JPEG, 30, bytes);
+        //bitmap.compress(Bitmap.CompressFormat.jpg, 30, bytes);
         return Bitmap.createScaledBitmap(bitmap, 290, 290, false);
     }
 
@@ -85,6 +83,11 @@ public class Order implements Serializable{
     public List<Picture> getPictures() {
         return pictureList;
     }
+
+    public int getPicturesNumber() {
+        return pictureList.size();
+    }
+
 
     public Order() {
     }
@@ -163,21 +166,23 @@ public class Order implements Serializable{
         pictureList = ordre.getPictures();
         if(pictureList.size()!=0) {
             for (Picture picture : pictureList) {
-                File target = new File(picture.getFile().getPath());
-                File target1 = new File(picture.getFile().getPath().substring(0, picture.getFile().getPath().length() - 4) + "_preview.jpeg");
-                if (target1.exists() && target1.isFile() && target1.canWrite()) {
-                    target1.delete();
-                    Log.d("d_file", "" + target1.getName());
-                }
+                try {
 
+                    File target1 = new File(picture.getFile().getPath().substring(0, picture.getFile().getPath().length() - 4) + "_preview.jpg");
+                    if (target1.exists() && target1.isFile() && target1.canWrite()) {
+                        target1.delete();
+                        ////Log.d("d_file", "" + target1.getName());
+                    }
+                }catch (Exception NullPointerException){}
+                try {
+                File target = new File(picture.getFile().getPath());
                 if(lectureDesParametres("action_fichier").equals("effacer")) {
                     if (target.exists() && target.isFile() && target.canWrite()) {
                         target.delete();
-                        Log.d("d_file", "" + target.getName());
+                        ////Log.d("d_file", "" + target.getName());
                     }
                 }
-
-
+                }catch (Exception NullPointerException){}
             }
             pictureList = new ArrayList<>();
             lastPictureUpdatDate = null;
@@ -188,34 +193,11 @@ public class Order implements Serializable{
     }
 
 
-/*    public void deleteFile(File file) {
-        if (pictureList !=null) {
-            try {
-                file.delete();
-                pictureList.remove(file);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }*/
 
     public Date getLastPictureUpdatDate() {
         return lastPictureUpdatDate;
     }
 
-
-    public boolean isOldEnoughToBeUploaded() {
-
-        if (lastPictureUpdatDate ==null) {
-            // Weighning never updated
-            return false ;
-        }
-        final int maxAgeInSeconds = 60 * OrderManager.getMaxAgeMinutes(); // 5 minutes
-        Date now = new Date() ;
-        long ageInSeconds = (now.getTime() - getLastPictureUpdatDate().getTime()) / 1000 ;
-        return ( getPictureCount()>0  && ageInSeconds > maxAgeInSeconds ) ;
-
-    }
 
 
     public boolean areAllPicturesSent() {
@@ -246,5 +228,9 @@ public class Order implements Serializable{
         return prefs;
 
 
+    }
+
+    public void setScanDate(Date date) {
+        scanDate = date;
     }
 }

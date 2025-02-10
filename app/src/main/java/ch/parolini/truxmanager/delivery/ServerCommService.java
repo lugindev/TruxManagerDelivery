@@ -4,8 +4,9 @@ package ch.parolini.truxmanager.delivery;
 import android.app.IntentService;
 import android.content.Intent;
 import android.os.AsyncTask;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -27,8 +28,6 @@ public class ServerCommService extends IntentService {
     public static int nbTotalOrdre;
     private static MainActivity _activity;
     private ArrayList<String[]> images;
-    private Requetes requetesBaseDeDonneeInterne;
-
 
     @Override
     public void onCreate() {
@@ -48,7 +47,7 @@ public class ServerCommService extends IntentService {
      */
     public ServerCommService() {
         super("ServerCommService");
-        Log.i("SRV","Starting thread") ;
+        ////Log.i("SRV","Starting thread") ;
     }
 
     /**
@@ -58,7 +57,7 @@ public class ServerCommService extends IntentService {
      */
     @Override
     protected void onHandleIntent(Intent intent) {
-        Log.i("SRV","Starting thread") ;
+        ////Log.i("SRV","Starting thread") ;
      while (true) {
          try {
              serverSynchro(false);
@@ -71,7 +70,7 @@ public class ServerCommService extends IntentService {
          // Wait
             try {
                 int timeToSleepInSecondes = getResources().getInteger(R.integer.SERVICE_SLEEPING_TIME_SECONDS) ;
-                Thread.sleep( timeToSleepInSecondes * 1000); // wait 20 secs
+                Thread.sleep( timeToSleepInSecondes * 1000L); // wait 20 secs
             } catch (Exception ignored) {}
         }
     }
@@ -85,20 +84,18 @@ public class ServerCommService extends IntentService {
             sendTextToGUI(getResources().getString(R.string.comm_error) + " " + bce.getMessage());
             askPassword() ;
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             sendTextToGUI(getResources().getString(R.string.comm_error) + " " + e.getMessage());
         }*/
 
         //if (clientConfig!=null) {
             //notifiyClientConfigToGUI(clientConfig);
-        try {
+
             sendAllWeigtingsImagesToServer(forceUpload);
             OrderManager.removeOldOrder();
             OrderManager.persistOrdersToLocalStorage(this.getApplicationContext());
             //VariablesGlobales._blockSendOrders = false;
-        }catch (Exception e){
 
-        }
             //sendTextToGUI(getResources().getString(R.string.connected)) ;
         //}
 
@@ -163,27 +160,22 @@ public class ServerCommService extends IntentService {
                  //nbTotalOrdre = order.getPictureCount();
                 for (Picture picture : order.getPictures()) {
                     try {
-                        requetesBaseDeDonneeInterne  = new Requetes(AppContext.getAppContext());
-                        requetesBaseDeDonneeInterne.open();
+                        
                         images = new ArrayList<>();
-                        images = (ArrayList<String[]>) requetesBaseDeDonneeInterne.selectImagesByName(picture.getFile().getPath());
+                        images = (ArrayList<String[]>) VariablesGlobales.requeteBd.selectImagesByName(picture.getFile().getPath());
                         if(images.size() == 0){
-                            requetesBaseDeDonneeInterne.ajouterImage(picture.getFile().getPath());
-                            Log.i("notSend","Image ajoutée "+ picture.getFile().getPath());
+                            //VariablesGlobales.requeteBd.ajouterImage(picture.getFile().getPath(),Integer.valueOf(VariablesGlobales._noOrder));
+                            ////Log.i("notSend","Image ajoutée "+ picture.getFile().getPath());
                         }
                         for (String[] path : images) {
-                            Log.i("notSend","Image envoyer "+ picture.getFile().getPath());
+                            ////Log.i("notSend","Image envoyer "+ picture.getFile().getPath());
                            // _activity.EmvoiImage(order.getOrderNumber(), path[1], order, path[0]);
 
                         }
 
                     } catch (Exception e) {
 
-                    } finally {
-
-                        requetesBaseDeDonneeInterne.close();
-
-                }
+                    }
 
 
                 }
@@ -193,7 +185,7 @@ public class ServerCommService extends IntentService {
 
         }
         catch (Exception e){
-        Log.i("Exception","sendOrderImagesNotAlreadySent" + e.getMessage());
+        ////Log.i("Exception","sendOrderImagesNotAlreadySent" + e.getMessage());
         }
     }
 
@@ -225,9 +217,9 @@ public class ServerCommService extends IntentService {
      * @param message
      */
     private void sendTextToGUI(String message) {
-        Log.d("sender", "Broadcasting message");
+        ////Log.d("sender", "Broadcasting message");
         Intent intent = new Intent("onToast");
-        intent.putExtra("message", (String) message);
+        intent.putExtra("message", message);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
@@ -236,105 +228,5 @@ public class ServerCommService extends IntentService {
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
 
     }
-
-    /*
-    private void sendAllImages() {
-        final List<File> allFiles= FileManager.getAllFilesInTruxFolder();
-        for ( File file : allFiles) {
-            String orderNumber = FileManager.findOrderNumberFromFile(file) ;
-            if (orderNumber!=null) {
-                if (RpcManager.sendPicture(orderNumber, file)) {
-                    Weighing weighing = WeighingManager.getWeighingFromOrder(orderNumber) ;
-                };
-            } else {
-                Log.e(RpcManager.class.getName(),"order number is null from this file:"+ file.getName()) ;
-            }
-        }
-
-
-    }
-*/
-
-
-
-/*
-        private List<Weighing> loadJobsFromServer() {
-        List<Weighing> weighings = new ArrayList<Weighing>() ;
-
-        // Simulation
-       // weighings.add(new Weighing("VS 00000000000","","Inerte","21234","Client A"));
-        // weighings.add(new Weighing("VS 11111111111","","Dechets","32334A","Client B"));
-        //weighings.add(new Weighing("VS 22222222222","","Terre","451234","Client C"));
-        //weighings.add(new Weighing("VS 33333333333","","Gravas","121234","Client D"));
-
-        GetWeightingsTasks getWeightingsTasks = new GetWeightingsTasks();
-
-        try {
-            Log.i("ServerCommService","Récupération des pesages sur le serveur");
-            sendTextToGUI(getResources().getString(R.string.connecting));
-            weighings = getWeightingsTasks.execute().get(getResources().getInteger(R.integer.CONNECTION_TIMEOUT_SECONDES), TimeUnit.SECONDS);
-            if (getWeightingsTasks.getLastCallException() != null) {
-                throw getWeightingsTasks.getLastCallException();
-            }
-            Log.i("ServerCommService",weighings.size() + " Taches du jours récupérées.");
-            sendTextToGUI(getResources().getString(R.string.connected)) ;
-            if (weighings==null || weighings.size()==0) {
-                sendTextToGUI(getResources().getString(R.string.nothingtodo)) ;
-            }
-
-        } catch (TimeoutException timeoutException) {
-            timeoutException.printStackTrace();
-            sendTextToGUI("Impossible d'accéder au serveur ( " + RpcManager.serverRootContextURL + "). Vérifiez votre connexion internet.");
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            sendTextToGUI("Impossible de récupérer les données du serveur: " + e.getMessage());
-
-        }
-
-
-
-        // foreach pesage call ImageManager.getExistingImageInFolderForOrder
-        if (weighings!=null) {
-            for (Weighing weighing : weighings) {
-                weighing.setPictureFiles(FileManager.getExistingImageInFolderForOrder(weighing.getOrderNumber()));
-            }
-        }
-
-        return weighings;
-    }
-
-    private class GetWeightingsTasks extends AsyncTask<Void, Void, List<Weighing>> {
-
-        Exception lastCallException;
-
-        public Exception getLastCallException() {
-            return lastCallException;
-        }
-
-        protected List<Weighing> doInBackground(Void... urls) {
-            try {
-                List<Weighing> weighings = RpcManager.getCurrentWeighing();
-                lastCallException = null;
-                return weighings;
-            } catch (Exception e) {
-                lastCallException = e;
-                e.printStackTrace();
-                return new ArrayList<Weighing>();
-            }
-        }
-    }
-*/
-        // Send an Intent with an action named "custom-event-name". The Intent sent should
-    // be received by the ReceiverActivity.
-    /*
-    private void sendWeigthingsToGUI() {
-        Log.d("sender", "Broadcasting message");
-        Intent intent = new Intent("custom-event-name");
-        // You can also include some extra data.
-        intent.putExtra("message", "This is my message!");
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
-    }
-*/
 
 }

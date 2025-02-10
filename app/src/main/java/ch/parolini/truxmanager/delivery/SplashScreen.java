@@ -16,21 +16,21 @@ import android.widget.TextView;
 public class SplashScreen extends Activity {
 
     // Splash screen timer
-    private static int SPLASH_TIME_OUT = 2000;
+    private static final int SPLASH_TIME_OUT = 2000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
-        TextView versionText = (TextView) findViewById(R.id.version);
+        TextView versionText = findViewById(R.id.version);
         String version = "??" ;
         try {
             PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
             version = pInfo.versionName;
         } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
         }
-        versionText.setText("Version " + version + " Luginbuhl 2019") ; ;
+        versionText.setText("Version " + version + " Luginbuhl 2019") ;
         new Handler().postDelayed(new Runnable() {
 
             /*

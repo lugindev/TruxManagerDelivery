@@ -56,7 +56,7 @@ public class OrderManager {
     }*/
 
 
- /*   *//**
+    /*   *//**
      * When we receive new orders from the server
 
      *//*
@@ -87,8 +87,17 @@ public class OrderManager {
 
 
     public static Order createAndSetCurrent(String orderNumber) {
-        Order order = new Order(orderNumber,new Date());
+        Order order = new Order(orderNumber.trim(),new Date());
+        order.setScanDate(new Date());
         addOrder(order);
+        currentOrder = order ;
+        return order ;
+    }
+
+    public static Order SetCurrent(String orderNumber, Date date) {
+        Order order = new Order(orderNumber.trim(),date);
+        order.getScanDate();
+        //addOrder(order);
         currentOrder = order ;
         return order ;
     }
@@ -111,17 +120,14 @@ public class OrderManager {
             pictureList = currentOrder.getPictures();
             if (pictureList.size() != 0) {
                 for (Picture picture : pictureList) {
-                    File target = new File(picture.getFile().getPath());
-                    File target1 = new File(picture.getFile().getPath().substring(0, picture.getFile().getPath().length() - 4) + "_preview.jpeg");
-                    if (target1.exists() && target1.isFile() && target1.canWrite()) {
-                        target1.delete();
-                        Log.d("d_file", "" + target1.getName());
-                    }
+                    if(picture.getFile().getPath()!=null) {
+                        File target = new File(picture.getFile().getPath());
 
-                    if(lectureDesParametres("action_fichier").equals("effacer")) {
-                        if (target.exists() && target.isFile() && target.canWrite()) {
-                            target.delete();
-                            Log.d("d_file", "" + target.getName());
+                        if (lectureDesParametres("action_fichier").equals("effacer")) {
+                            if (target.exists() && target.isFile() && target.canWrite()) {
+                                target.delete();
+                                //Log.d("d_file", "" + target.getName());
+                            }
                         }
                     }
 
@@ -155,7 +161,7 @@ public class OrderManager {
 
     public static void setMaxAgeMinutes(int maxAgeMinutes) {
         OrderManager.maxAgeMinutes = maxAgeMinutes;
-        Log.i(RpcManager.class.getName(),"maxAgeMinutes set to " + maxAgeMinutes) ;
+        //Log.i(RpcManager.class.getName(),"maxAgeMinutes set to " + maxAgeMinutes) ;
     }
 
 //    public static void putWeightingToSend(Order order) {
@@ -182,7 +188,7 @@ public class OrderManager {
         // Serialize this class into a JSON string using GSON
         Gson gson = new Gson();
         return gson.toJson(orders);
-     }
+    }
 
     public static List<Order> fromJSON(String orderJSON) throws IOException {
         // Use GSON to instantiate this class using the JSON representation of the state
@@ -206,7 +212,7 @@ public class OrderManager {
             try {
                 orders = new LinkedList<>(fromJSON(jsonDataContent)) ;
             } catch (IOException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
         }
     }
@@ -226,6 +232,21 @@ public class OrderManager {
                 }
             }
         }
+    }
+
+    public static void removeOrders() {
+        try {
+            if (orders != null) {
+                List<Order> orders = getOrders() ;
+                for (Order o :orders){
+                    //Order orderToRemove = o.get(i);
+                    //if (orderToRemove.areAllPicturesSent()) {
+                    removeOrder(o);
+                    //size = orders.size();
+                    //}
+                }
+            }
+        }catch (Exception e){}
     }
 
     private static String lectureDesParametres(String key) {

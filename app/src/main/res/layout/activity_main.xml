@@ -9,6 +9,29 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:clipToPadding="false">
+        <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:tools="http://schemas.android.com/tools"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingLeft="2dp"
+            android:paddingRight="2dp"
+            android:paddingTop="0dp"
+            android:layout_marginTop="0sp"
+            android:background="#ffffff"
+            tools:context="ch.parolini.truxmanager.delivery.MainActivity">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_marginTop="0px"
+            android:layout_height="150px"
+            android:background="#E8E8E8"
+            android:textColor="@color/colorPrimaryDark"
+            android:textSize="24sp"
+            android:layout_marginBottom="0sp"
+            android:padding="10sp"
+            android:maxLines="100"
+            android:id="@+id/info"
+            />
+        </RelativeLayout>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -24,11 +47,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>-->
 
+
+
     <ListView
         android:id="@+id/listView1"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="3"/>
 
 
     <ListView
@@ -37,7 +62,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentStart="true"
         android:divider="#000079ff"
-        android:dividerHeight="1dp"
+        android:dividerHeight="0dp"
         android:drawSelectorOnTop="false"
         android:listSelector="#E8E8E8" />
 
@@ -72,18 +97,41 @@
         android:gravity="center"
         android:text="@string/list_vide" />
 
-    <android.support.design.widget.FloatingActionButton
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:id="@+id/addButton"
-        app:backgroundTint="@color/colorPrimaryDark"
+    <LinearLayout
+        android:layout_gravity="bottom|end"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end|right"
-        android:tint="@android:color/white"
-        android:src="@android:drawable/ic_input_add"
-        android:layout_margin="16dp"
+        android:orientation="vertical"
         android:layout_above="@+id/separator2"
-        android:layout_alignParentEnd="true" />
+        android:layout_alignParentEnd="true"
+        >
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            android:id="@+id/addBon"
+            app:backgroundTint="@color/colorPrimaryDark"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="@dimen/fab_margin"
+            android:tint="@android:color/white"
+            android:src="@drawable/lst_bons"
+            android:layout_above="@+id/separator2"
+            android:layout_alignParentEnd="true" />
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            android:id="@+id/addButton"
+            app:backgroundTint="@color/colorPrimaryDark"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="@dimen/fab_margin"
+            android:tint="@android:color/white"
+            android:src="@android:drawable/ic_input_add"
+            android:layout_above="@+id/separator2"
+            android:layout_alignParentEnd="true" />
+    </LinearLayout>
+
+
 
 </RelativeLayout>
     </LinearLayout>
